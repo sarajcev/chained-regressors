@@ -95,7 +95,7 @@ plt.show()
 def hampel_filter(input_series, window_size, 
                   scale_factor=1.4826, n_sigmas=3, 
                   overwrite=True, copy_series=True):
-    """ Hampel filter for time-series data outlier detection and removal
+    """ Hampel filter for time-series data outlier detection and removal.
 
     Arguments
     ---------
@@ -132,7 +132,7 @@ def hampel_filter(input_series, window_size,
     Hampel filter is used for detecting outliers in the time-series data
     (and their replacement with the rolling-window median values). It is 
     based on the rolling window statistics of the time-series values. It 
-    flags as outliers any value that lies more than 'n_sigmas' from the 
+    flags as outliers any value that lies more than "n_sigmas" from the 
     median value, calculated using the rolling window approach.
     """
     if copy_series:
@@ -162,6 +162,7 @@ def hampel_filter(input_series, window_size,
     return series, indices
 
 
+# Apply Hampel filter
 filtered, outliers = hampel_filter(df['ST'], window_size=8)
 
 
@@ -238,7 +239,7 @@ def plot_correlations(dataframe, column_names, lags=24,
     plt.show()
     return
 
-
+# Show plots
 plot_correlations(df, column_names=['PV', 'ST'])
 
 
@@ -246,17 +247,17 @@ plot_correlations(df, column_names=['PV', 'ST'])
 df[['PV', 'ST']].corr()
 
 
-# ### Features engineering from time-series data
+# ### Features engineering from the time-series data
 
 def engineer_features(dataframe, window=24, steps_ahead=1, 
                       copy_data=True, resample=True, drop_nan_rows=True):
-    """ Engineer features from time-series data
+    """ Engineer features from the time-series data.
 
     Features engineering from the time-series data by using time-shift,
     first-differencing, rolling window statistics, cyclical transforms,
     and encoding. NaN values are dropped from the final dataset.
 
-    NOTE: Function is tailored for the hourly sampled data time-series.
+    NOTE: Function is tailored for the hourly sampled data time-series!
 
     Arguments
     ---------
@@ -273,7 +274,7 @@ def engineer_features(dataframe, window=24, steps_ahead=1,
         inside the function.
     resample: bool
         True/False indicator for resampling data to hourly frequency.
-   drop_nan_rows: bool
+    drop_nan_rows: bool
         True/False indicator to drop rows with NaN values.
 
     Returns
@@ -341,7 +342,7 @@ df2.head()
 # ### Train, validation, and test datasets (time-series data)
 
 def prepare_data(dataframe, weather_forecast=False, copy_data=True):
-    """ Prepare dataframe for spliting into train and test sets
+    """ Prepare dataframe for spliting into train and test sets.
 
     Arguments
     ---------
@@ -381,7 +382,7 @@ def prepare_data(dataframe, weather_forecast=False, copy_data=True):
 
 
 def exponential_sample_weights(num, shape=1.):
-    """ Generating exponential sample weights
+    """ Generating exponential sample weights.
 
     Parameters
     ----------
@@ -389,8 +390,9 @@ def exponential_sample_weights(num, shape=1.):
         Number of samples.
     shape: float
         Number indicating the steepness of the exponential function.
-        Larger number means larger steepness. Usually 1 to 5 would
-        be enough to put the weight on the most-recent samples.
+        Larger number means larger steepness. Usually, a number in 
+        the range 1 to 5 would be enough to put the weight on the
+        most-recent samples.
 
     Returns
     -------
@@ -401,8 +403,8 @@ def exponential_sample_weights(num, shape=1.):
     Notes
     -----
     It is assumed that the samples array for which the weights are  
-    being generated here constitute an ordered time-series, starting 
-    with the most-recent sample at the position zero.
+    being generated here constitutes an ordered time-series, starting 
+    with the most-recent sample at the position zero!
     """
     indices = np.linspace(0., shape, num=num)
     sample_weights = np.exp(-indices)
@@ -501,6 +503,7 @@ def plot_predictions(walk, y_test, y_pred):
     plt.show()
 
 
+# Single step model prediction
 single_step_model = False
 
 if single_step_model:
@@ -538,7 +541,7 @@ if single_step_model:
         # Creating a pipeline
         pipe = Pipeline(steps=[('estimator', ada)])
         # Parameters of pipeline for the randomized search with cross-validation
-        param_dists = {# Hyper-parameters of the base estiamtor (DecisionTree)
+        param_dists = {# Hyper-parameters of the base estimator (DecisionTree)
                        'estimator__base_estimator__max_depth': [3, 4],  # three-levels deep
                        'estimator__base_estimator__min_samples_leaf': [1, 2],
                        # Hyper-parameters of the ensemble estimator (AdaBoost)
@@ -565,13 +568,15 @@ if single_step_model:
         raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(model))
 
     NITER = 100  # number of random search iterations
+    NJOBS = 7    # Determine the number of parallel jobs
+
     sample_weighting = True  # use sample weighting
 
     time_start = timeit.default_timer()
     search = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists, 
                                 cv=TimeSeriesSplit(n_splits=3),
                                 scoring='neg_mean_squared_error',
-                                n_iter=NITER, refit=True, n_jobs=-1)
+                                n_iter=NITER, refit=True, n_jobs=NJOBS)
     if sample_weighting:
         # Exponentially weighting samples (emphasis on the most recent ones)
         sample_weights = exponential_sample_weights(X_train.shape[0], 2.)
@@ -627,8 +632,7 @@ if single_step_model:
     plt.xlabel('Day/Hour')
     plt.ylabel('PV power')
     plt.show()
-    
-    
+
     # Do walk-forward predictions (ONLY if weather_forecast == False)
     for k in range(WALK):
         X_test_values = X_test.values[k,:]
@@ -645,16 +649,13 @@ if single_step_model:
 
 # ### Multi-step model pipeline without features selection
 
-
 # Multi-step model (24-hours ahead)
 df2 = engineer_features(df, steps_ahead=STEP)
 # Prepare dataframe for a split into train, test sets
 X, y = prepare_data(df2)
 
-
 # Train and test dataset split (w/o shuffle)
 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, shuffle=False)
-
 
 # Print train and test set shapes
 print(X_train.shape, y_train.shape)
@@ -729,11 +730,12 @@ else:
     raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(model))
 
 NITER = 100  # number of random search iterations
+NJOBS = 7    # Determine the number of parallel jobs
 time_start = timeit.default_timer()
 search_multi = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists, 
                                   cv=TimeSeriesSplit(n_splits=3),
                                   scoring='neg_mean_squared_error',
-                                  n_iter=NITER, refit=True, n_jobs=7)
+                                  n_iter=NITER, refit=True, n_jobs=NJOBS)
 search_multi.fit(X_train, y_train)
 time_end = timeit.default_timer()
 time_elapsed = time_end - time_start
