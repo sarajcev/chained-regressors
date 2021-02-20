@@ -421,8 +421,8 @@ def exponential_sample_weights(num, shape=1.):
 
 # ### Walk-forward multi-step prediction with a single-step model
 
-WALK = 12  # walk-forward for WALK hours
-STEP = 24  # multi-step predict for STEP hours ahead
+WALK = 1  # walk-forward for WALK hours
+STEP = 12  # multi-step predict for STEP hours ahead
 # With STEP=24 and WALK=12, we are making a 24-hour ahead predictions 
 # after each hour, and move forward in time for 12 hours in total. 
 # In other words, we walk forward for 12 hours, and each time we move 
@@ -697,7 +697,7 @@ elif multi_model == 'DecisionTree':
                    }
 elif multi_model == 'ChainSVR':
     # Support Vector Regression (does NOT support multi-output natively)
-    svr = RegressorChain(SVR(kernel='rbf', cache_size=1500))
+    svr = RegressorChain(SVR(kernel='rbf', cache_size=500))
     # Creating a pipeline
     pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
                            ('svr', svr)])
@@ -706,7 +706,6 @@ elif multi_model == 'ChainSVR':
                    'svr__base_estimator__C': stats.loguniform(1e0, 1e3),
                    'svr__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
                    'svr__base_estimator__gamma': ['scale', 'auto'],
-                   'svr__base_estimator__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
                   }                 
 elif multi_model == 'MultiSVR':
     # Support Vector Regression (does NOT support multi-output natively)
