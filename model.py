@@ -250,7 +250,8 @@ df[['PV', 'ST']].corr()
 # ### Features engineering from the time-series data
 
 def engineer_features(dataframe, window=24, steps_ahead=1, 
-                      copy_data=True, resample=True, drop_nan_rows=True):
+                      copy_data=True, resample=True, drop_nan_rows=True,
+                      weather_data=True):
     """ Engineer features from the time-series data.
 
     Features engineering from the time-series data by using time-shift,
@@ -290,13 +291,20 @@ def engineer_features(dataframe, window=24, steps_ahead=1,
         df = df.resample('1H').mean()
     
     # Engineer features from time-series data
-    columns = df.columns
-    for col in columns:
+    if weather_data:
+        columns = df.columns
+        for col in columns:
+            for i in range(1, window+1):
+                # Shift data by lag of 1 to window=24 hours
+                df[col+'_{:d}h'.format(i)] = df[col].shift(periods=i)  # time-lag
+        for col in columns:
+            df[col+'_diff'] = df[col].diff()  # first-difference
+    else:
+        # Additional features only for PV only (weather data is completely unused)
         for i in range(1, window+1):
             # Shift data by lag of 1 to window=24 hours
-            df[col+'_{:d}h'.format(i)] = df[col].shift(periods=i)  # time-lag
-    for col in columns:
-        df[col+'_diff'] = df[col].diff()  # first-difference
+            df['PV'+'_{:d}h'.format(i)] = df['PV'].shift(periods=i)  # time-lag
+        df['PV_diff'] = df['PV'].diff()    
     df['PV_diff24'] = df['PV'].diff(24)
 
     # Rolling windows (24-hours) on time-shifted PV production
@@ -650,7 +658,7 @@ if single_step_model:
 # ### Multi-step model pipeline without features selection
 
 # Multi-step model (24-hours ahead)
-df2 = engineer_features(df, steps_ahead=STEP)
+df2 = engineer_features(df, steps_ahead=STEP, weather_data=False)
 # Prepare dataframe for a split into train, test sets
 X, y = prepare_data(df2)
 
