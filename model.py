@@ -439,11 +439,14 @@ def walk_forward(X_values, y_predicted, window=24, weather_forecast=False):
     ---------
     X_values: np.array
         Input values for making predictions.
-    Y_predicted: float
+    y_predicted: float
         Predicted value.
     window: int
         Window size of the past observations. It should be equal to 
         the window size that was used for features engineering.
+    weather_forecast: bool
+        True/False variable indicating if hour-ahead weather 
+        forecast is available or not when making predictions.
 
     Returns
     -------
