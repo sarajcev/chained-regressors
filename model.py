@@ -639,8 +639,10 @@ if single_step_model:
     
     plt.figure(figsize=(6,4))
     plt.plot(y_test.index[:24], y_test.values[0:24], lw=2, label='true values')
-    plt.plot(y_test.index[:24], y_preds, ls='--', lw=1.5, marker='+', ms=10, label='predictions')
-    plt.text(y_test.index[20], 0.35, 'MAE: {:.3f}'.format(mae), horizontalalignment='center', fontweight='bold')
+    plt.plot(y_test.index[:24], y_preds, ls='--', lw=1.5,
+             marker='+', ms=10, label='predictions')
+    plt.text(y_test.index[20], 0.35, 'MAE: {:.3f}'.format(mae),
+             horizontalalignment='center', fontweight='bold')
     plt.legend(loc='upper right')
     plt.grid(axis='y')
     plt.xticks(rotation=45)
@@ -732,14 +734,15 @@ elif multi_model == 'PCA+SVR':
     # while retaining maximum amount of the variance.
     pca = PCA(whiten=True, svd_solver='full')
     # Support Vector Regression (does NOT support multi-output natively)
-    svr = MultiOutputRegressor(SVR(kernel='rbf', gamma='scale'))
+    svr = RegressorChain(SVR(kernel='rbf', cache_size=500))
     # Creating a pipeline
     pipe = Pipeline(steps=[('pca', pca), 
                            ('svr', svr)])
     # Parameters of pipeline for the randomized search with cross-validation
     param_dists = {'pca__n_components': stats.uniform(),
-                   'svr__estimator__C': stats.loguniform(1e0, 1e3),
-                   'svr__estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+                   'svr__base_estimator__C': stats.loguniform(1e0, 1e3),
+                   'svr__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+                   'svr__base_estimator__gamma': ['scale', 'auto'],
                   }
 else:
     raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(multi_model))
@@ -782,6 +785,8 @@ for k in range(WALK):
     X_test_values = X_test.values[k+20,:]  # +20 hard-coded shift to align views with those
     y_test_values = y_test.values[k+20,:]  # of walk-forward predictions for easy comparison
     y_predict = search_multi.predict(X_test_values.reshape(1,-1)).flatten()
+    # Manually correct (small) negative predicted values
+    y_predict = np.where(y_predict < 0., 0., y_predict)
     # Plot multi-step predictions against true values
     plot_multi_step_predictions(k, y_test_values, y_predict)
 
