@@ -277,6 +277,9 @@ def engineer_features(dataframe, window=24, steps_ahead=1,
         True/False indicator for resampling data to hourly frequency.
     drop_nan_rows: bool
         True/False indicator to drop rows with NaN values.
+    weather_data: bool
+        True/False indicator for using weather information during
+        features engineering.
 
     Returns
     -------
