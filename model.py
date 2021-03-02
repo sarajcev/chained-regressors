@@ -173,6 +173,7 @@ ax.scatter(df['ST'].index[outliers], df['ST'].values[outliers],
 ax.scatter(filtered.index[outliers], filtered.values[outliers], 
            marker='s', c='navy', s=20, label='corrected', zorder=2)
 ax.set_ylabel('Temp (°C)')
+ax.grid(which='major', axis='y')
 ax.legend(loc='best')
 fig.tight_layout()
 plt.show()
@@ -424,8 +425,8 @@ def exponential_sample_weights(num, shape=1.):
 
 # ### Walk-forward multi-step prediction with a single-step model
 
-WALK = 1  # walk-forward for WALK hours
-STEP = 12  # multi-step predict for STEP hours ahead
+WALK = 12  # walk-forward for WALK hours
+STEP = 24  # multi-step predict for STEP hours ahead
 # With STEP=24 and WALK=12, we are making a 24-hour ahead predictions 
 # after each hour, and move forward in time for 12 hours in total. 
 # In other words, we walk forward for 12 hours, and each time we move 
@@ -618,15 +619,15 @@ if single_step_model:
         sorted_idx = np.argsort(feature_importance)[-TOP:]
         pos = np.arange(sorted_idx.shape[0]) + .25
 
-    # Plot relative feature importance
-    fig, ax = plt.subplots(figsize=(7,5))
-    ax.barh(pos, feature_importance[sorted_idx][-TOP:], 
-            align='center', color='magenta', alpha=0.6)
-    plt.yticks(pos, X_train.columns[sorted_idx][-TOP:])
-    ax.set_xlabel('Feature Relative Importance')
-    ax.grid(axis='x')
-    plt.tight_layout()
-    plt.show()
+        # Plot relative feature importance
+        fig, ax = plt.subplots(figsize=(7,5))
+        ax.barh(pos, feature_importance[sorted_idx][-TOP:],
+                align='center', color='magenta', alpha=0.6)
+        plt.yticks(pos, X_train.columns[sorted_idx][-TOP:])
+        ax.set_xlabel('Feature Relative Importance')
+        ax.grid(axis='x')
+        plt.tight_layout()
+        plt.show()
     
     # Make single-step predictions for 24 hours ahead
     y_preds = search.predict(X_test.values[:24,:])
@@ -740,7 +741,7 @@ elif multi_model == 'PCA+SVR':
                    'svr__estimator__epsilon': stats.loguniform(1e-5, 1e-2),
                   }
 else:
-    raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(model))
+    raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(multi_model))
 
 NITER = 100  # number of random search iterations
 NJOBS = 7    # Determine the number of parallel jobs
