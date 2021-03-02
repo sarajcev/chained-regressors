@@ -250,7 +250,8 @@ df[['PV', 'ST']].corr()
 # ### Features engineering from the time-series data
 
 def engineer_features(dataframe, window=24, steps_ahead=1, 
-                      copy_data=True, resample=True, drop_nan_rows=True):
+                      copy_data=True, resample=True, drop_nan_rows=True,
+                      weather_data=True):
     """ Engineer features from the time-series data.
 
     Features engineering from the time-series data by using time-shift,
@@ -290,13 +291,20 @@ def engineer_features(dataframe, window=24, steps_ahead=1,
         df = df.resample('1H').mean()
     
     # Engineer features from time-series data
-    columns = df.columns
-    for col in columns:
+    if weather_data:
+        columns = df.columns
+        for col in columns:
+            for i in range(1, window+1):
+                # Shift data by lag of 1 to window=24 hours
+                df[col+'_{:d}h'.format(i)] = df[col].shift(periods=i)  # time-lag
+        for col in columns:
+            df[col+'_diff'] = df[col].diff()  # first-difference
+    else:
+        # Additional features only for PV only (weather data is completely unused)
         for i in range(1, window+1):
             # Shift data by lag of 1 to window=24 hours
-            df[col+'_{:d}h'.format(i)] = df[col].shift(periods=i)  # time-lag
-    for col in columns:
-        df[col+'_diff'] = df[col].diff()  # first-difference
+            df['PV'+'_{:d}h'.format(i)] = df['PV'].shift(periods=i)  # time-lag
+        df['PV_diff'] = df['PV'].diff()    
     df['PV_diff24'] = df['PV'].diff(24)
 
     # Rolling windows (24-hours) on time-shifted PV production
@@ -413,8 +421,8 @@ def exponential_sample_weights(num, shape=1.):
 
 # ### Walk-forward multi-step prediction with a single-step model
 
-WALK = 12  # walk-forward for WALK hours
-STEP = 24  # multi-step predict for STEP hours ahead
+WALK = 1  # walk-forward for WALK hours
+STEP = 12  # multi-step predict for STEP hours ahead
 # With STEP=24 and WALK=12, we are making a 24-hour ahead predictions 
 # after each hour, and move forward in time for 12 hours in total. 
 # In other words, we walk forward for 12 hours, and each time we move 
@@ -653,7 +661,7 @@ if single_step_model:
 # ### Multi-step model pipeline without features selection
 
 # Multi-step model (24-hours ahead)
-df2 = engineer_features(df, steps_ahead=STEP)
+df2 = engineer_features(df, steps_ahead=STEP, weather_data=False)
 # Prepare dataframe for a split into train, test sets
 X, y = prepare_data(df2)
 
@@ -692,7 +700,7 @@ elif multi_model == 'DecisionTree':
                    }
 elif multi_model == 'ChainSVR':
     # Support Vector Regression (does NOT support multi-output natively)
-    svr = RegressorChain(SVR(kernel='rbf', cache_size=1500))
+    svr = RegressorChain(SVR(kernel='rbf', cache_size=500))
     # Creating a pipeline
     pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
                            ('svr', svr)])
@@ -701,7 +709,6 @@ elif multi_model == 'ChainSVR':
                    'svr__base_estimator__C': stats.loguniform(1e0, 1e3),
                    'svr__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
                    'svr__base_estimator__gamma': ['scale', 'auto'],
-                   'svr__base_estimator__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
                   }                 
 elif multi_model == 'MultiSVR':
     # Support Vector Regression (does NOT support multi-output natively)
