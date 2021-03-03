@@ -30,6 +30,10 @@ from sklearn.multioutput import MultiOutputRegressor, RegressorChain
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.decomposition import PCA
 
+# Using experimental HalvingRandomSearchCV for hyperparameters optimization
+from sklearn.experimental import enable_halving_search_cv # noqa
+from sklearn.model_selection import HalvingRandomSearchCV
+
 from scipy import stats
 
 import statsmodels.api as sm
@@ -748,20 +752,40 @@ else:
     raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(multi_model))
 
 NITER = 100  # number of random search iterations
-NJOBS = 7    # Determine the number of parallel jobs
+NJOBS = -1   # Determine the number of parallel jobs
 print('Running ...')
-time_start = timeit.default_timer()
-search_multi = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists, 
-                                  cv=TimeSeriesSplit(n_splits=3),
-                                  scoring='neg_mean_squared_error',
-                                  n_iter=NITER, refit=True, n_jobs=NJOBS)
-search_multi.fit(X_train, y_train)
-time_end = timeit.default_timer()
-time_elapsed = time_end - time_start
-print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
-print('Best parameter (CV score = {:.3f}):'.format(search_multi.best_score_))
-print(search_multi.best_params_)
 
+# Choose a search method for hyperparameters optimization
+search_type = 'HalvingRandomSearchCV'
+
+if search_type == 'RandomizedSearchCV':
+    time_start = timeit.default_timer()
+    search_multi = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists,
+                                      cv=TimeSeriesSplit(n_splits=3),
+                                      scoring='neg_mean_squared_error',
+                                      n_iter=NITER, refit=True, n_jobs=NJOBS)
+    search_multi.fit(X_train, y_train)
+    time_end = timeit.default_timer()
+    time_elapsed = time_end - time_start
+    print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
+    print('Best parameter (CV score = {:.3f}):'.format(search_multi.best_score_))
+    print(search_multi.best_params_)
+
+elif search_type == 'HalvingRandomSearchCV':
+    time_start = timeit.default_timer()
+    search_multi = HalvingRandomSearchCV(estimator=pipe, param_distributions=param_dists,
+                                         cv=TimeSeriesSplit(n_splits=3),
+                                         scoring='neg_mean_squared_error',
+                                         refit=True, n_jobs=NJOBS)
+    search_multi.fit(X_train, y_train)
+    time_end = timeit.default_timer()
+    time_elapsed = time_end - time_start
+    print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
+    print('Best parameter (CV score = {:.3f}):'.format(search_multi.best_score_))
+    print(search_multi.best_params_)
+
+else:
+    raise NotImplementedError('Search method "{}" is not recognized or implemented!'.format(search_type))
 
 def plot_multi_step_predictions(walk, y_test, y_pred):
     plt.figure(figsize=(6,4))
