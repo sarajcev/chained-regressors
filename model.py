@@ -23,6 +23,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import median_absolute_error, mean_absolute_percentage_error
 from sklearn.feature_selection import SelectKBest, mutual_info_regression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -796,8 +797,8 @@ def plot_multi_step_predictions(walk, y_test, y_pred):
     plt.title('walk forward +{:2d} hours'.format(walk+1))
     plt.plot(y_test, lw=2.5, label='true values')
     plt.plot(y_pred, ls='--', lw=1.5, marker='+', ms=10, label='predictions')
-    mae = mean_absolute_error(y_test, y_pred)
-    plt.text(STEP-2, 0.35, 'MAE: {:.3f}'.format(mae), 
+    medae = median_absolute_error(y_test, y_pred)
+    plt.text(STEP-2, 0.35, 'MedAE: {:.3f}'.format(medae),
              horizontalalignment='right', 
              fontweight='bold')
     plt.legend(loc='upper right')
@@ -815,6 +816,14 @@ for k in range(WALK):
     y_predict = search_multi.predict(X_test_values.reshape(1,-1)).flatten()
     # Manually correct (small) negative predicted values
     y_predict = np.where(y_predict < 0., 0., y_predict)
+    print('Step {:d} of {:d}:'.format(k+1, WALK))
+    # Compute prediction metrics
+    mse = mean_squared_error(y_test_values, y_predict)
+    print('MSE: {:.3f}'.format(mse))
+    mae = mean_absolute_error(y_test_values, y_predict)
+    print('MAE: {:.3f}'.format(mae))
+    medae = median_absolute_error(y_test_values, y_predict)
+    print('MedAE: {:.3f}'.format(medae))
     # Plot multi-step predictions against true values
     plot_multi_step_predictions(k, y_test_values, y_predict)
 
