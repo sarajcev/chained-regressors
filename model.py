@@ -30,9 +30,12 @@ from sklearn.multioutput import MultiOutputRegressor, RegressorChain
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.decomposition import PCA
 
-# Using experimental HalvingRandomSearchCV for hyperparameters optimization
-from sklearn.experimental import enable_halving_search_cv # noqa
-from sklearn.model_selection import HalvingRandomSearchCV
+try:
+    # Using experimental HalvingRandomSearchCV for hyperparameters optimization
+    from sklearn.experimental import enable_halving_search_cv # noqa
+    from sklearn.model_selection import HalvingRandomSearchCV
+except ImportError:
+    print('HalvingRandomSearchCV not found. Update scikit-learn to 0.24.')
 
 from scipy import stats
 
@@ -751,7 +754,6 @@ elif multi_model == 'PCA+SVR':
 else:
     raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(multi_model))
 
-NITER = 100  # number of random search iterations
 NJOBS = -1   # Determine the number of parallel jobs
 print('Running ...')
 
@@ -763,7 +765,8 @@ if search_type == 'RandomizedSearchCV':
     search_multi = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists,
                                       cv=TimeSeriesSplit(n_splits=3),
                                       scoring='neg_mean_squared_error',
-                                      n_iter=NITER, refit=True, n_jobs=NJOBS)
+                                      n_iter=100,  # number of random search iterations
+                                      refit=True, n_jobs=NJOBS)
     search_multi.fit(X_train, y_train)
     time_end = timeit.default_timer()
     time_elapsed = time_end - time_start
@@ -776,6 +779,7 @@ elif search_type == 'HalvingRandomSearchCV':
     search_multi = HalvingRandomSearchCV(estimator=pipe, param_distributions=param_dists,
                                          cv=TimeSeriesSplit(n_splits=3),
                                          scoring='neg_mean_squared_error',
+                                         factor=2,
                                          refit=True, n_jobs=NJOBS)
     search_multi.fit(X_train, y_train)
     time_end = timeit.default_timer()
