@@ -30,9 +30,12 @@ from sklearn.multioutput import MultiOutputRegressor, RegressorChain
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.decomposition import PCA
 
-# Using experimental HalvingRandomSearchCV for hyperparameters optimization
-from sklearn.experimental import enable_halving_search_cv # noqa
-from sklearn.model_selection import HalvingRandomSearchCV
+try:
+    # Using experimental HalvingRandomSearchCV for hyperparameters optimization
+    from sklearn.experimental import enable_halving_search_cv # noqa
+    from sklearn.model_selection import HalvingRandomSearchCV
+except ImportError:
+    print('HalvingRandomSearchCV not found. Update scikit-learn to 0.24.')
 
 from scipy import stats
 
