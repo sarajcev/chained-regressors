@@ -8,6 +8,7 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gs
 
 try:
     import seaborn as sns
@@ -792,20 +793,28 @@ elif search_type == 'HalvingRandomSearchCV':
 else:
     raise NotImplementedError('Search method "{}" is not recognized or implemented!'.format(search_type))
 
+
 def plot_multi_step_predictions(walk, y_test, y_pred):
-    plt.figure(figsize=(6,4))
-    plt.title('walk forward +{:2d} hours'.format(walk+1))
-    plt.plot(y_test, lw=2.5, label='true values')
-    plt.plot(y_pred, ls='--', lw=1.5, marker='+', ms=10, label='predictions')
+    fig = plt.figure(figsize=(6,5))
+    gx = gs.GridSpec(nrows=2, ncols=1, figure=fig, height_ratios=[3, 1])
+    ax = np.empty(shape=(2,1), dtype=np.ndarray)
+    ax[0,0] = fig.add_subplot(gx[0,0])
+    ax[1,0] = fig.add_subplot(gx[1,0], sharex=ax[0,0])
+    ax[0,0].set_title('walk forward +{:2d} hours'.format(walk+1))
+    ax[0,0].plot(y_test, lw=2.5, label='true values')
+    ax[0,0].plot(y_pred, ls='--', lw=1.5, marker='+', ms=10, label='predictions')
     medae = median_absolute_error(y_test, y_pred)
-    plt.text(STEP-2, 0.35, 'MedAE: {:.3f}'.format(medae),
-             horizontalalignment='right', 
-             fontweight='bold')
-    plt.legend(loc='upper right')
-    plt.ylim(top=0.5)
-    plt.grid(axis='y')
-    plt.xlabel('Hour')
-    plt.ylabel('PV power')
+    ax[0,0].text(STEP-2, 0.35, 'MedAE: {:.3f}'.format(medae),
+                 horizontalalignment='right', fontweight='bold')
+    ax[0,0].legend(loc='upper right')
+    ax[0,0].set_ylim(top=0.5)
+    ax[0,0].grid(axis='y')
+    ax[0,0].set_ylabel('PV power')
+    ax[1,0].plot(y_test-y_pred, ls='--', lw=1.5, c='red')
+    ax[1,0].axhline(color='black')
+    ax[1, 0].set_xlabel('Hour')
+    ax[1,0].set_ylabel('Error')
+    fig.tight_layout()
     plt.show()
 
 
@@ -816,6 +825,7 @@ for k in range(WALK):
     y_predict = search_multi.predict(X_test_values.reshape(1,-1)).flatten()
     # Manually correct (small) negative predicted values
     y_predict = np.where(y_predict < 0., 0., y_predict)
+
     print('Step {:d} of {:d}:'.format(k+1, WALK))
     # Compute prediction metrics
     mse = mean_squared_error(y_test_values, y_predict)
@@ -824,6 +834,6 @@ for k in range(WALK):
     print('MAE: {:.3f}'.format(mae))
     medae = median_absolute_error(y_test_values, y_predict)
     print('MedAE: {:.3f}'.format(medae))
+
     # Plot multi-step predictions against true values
     plot_multi_step_predictions(k, y_test_values, y_predict)
-
