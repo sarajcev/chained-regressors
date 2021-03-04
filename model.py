@@ -44,13 +44,103 @@ from scipy import stats
 import statsmodels.api as sm
 
 
+def hampel_filter(input_series, window_size,
+                  scale_factor=1.4826, n_sigmas=3,
+                  overwrite=True, copy_series=True):
+    """ Hampel filter for time-series data outlier detection and removal.
+
+    Arguments
+    ---------
+    input_series: pd.Series
+        Pandas series holding the original (unfiltered) time-series data.
+    window_size: int
+        Window size for the rolling window statistics of the Hampel filter.
+    scale_factor: float
+        Scale factor for the Hampel filter. Default value is provided with
+        the assumption of the Gaussian distribution of samples.
+    n_sigmas: int
+        Number of standard deviations from the median, above/below which
+        a data point is marked as outlier. Default value is set at three
+        standard deviations.
+    overwrite: bool
+        True/False indicator for overwriting the outliers with the median
+        values, from rolling window statistics.
+    copy_series: bool
+        True/False indicator for making a local copy of the pandas series
+        inside the function.
+
+    Returns
+    -------
+    series: pd.Series
+        New pandas series with outliers replaced (if overwrite=True) with
+        rolling median values; otherwise, original pd.series object.
+    indices: list
+        List of indices where outliers have been detected (and replaced
+        if overwrite=True) in the returned pd.series object 'series'.
+        This list can be empty if there were no outliers detected.
+
+    Notes
+    -----
+    Hampel filter is used for detecting outliers in the time-series data
+    (and their replacement with the rolling-window median values). It is
+    based on the rolling window statistics of the time-series values. It
+    flags as outliers any value that lies more than "n_sigmas" from the
+    median value, calculated using the rolling window approach.
+    """
+    if copy_series:
+        series = input_series.copy()
+    else:
+        series = input_series
+
+    # Median absolute deviation function
+    mad = lambda x: np.median(np.abs(x - np.median(x)))
+
+    # Rolling statistics
+    rolling_median = input_series.rolling(window=2 * window_size, center=True).median()
+    difference = np.abs(input_series - rolling_median)
+    rolling_mad = scale_factor * input_series.rolling(window=2 * window_size, center=True).apply(mad)
+    indices = list(np.argwhere(difference.values > (n_sigmas * rolling_mad.values)).flatten())
+
+    # Overwriting outliers with rolling median values
+    if len(indices) == 0:
+        print('There were no outliers found within {:d} standard deviations.'.format(n_sigmas))
+    else:
+        print('Found {:d} outliers within {:d} standard deviations.'.format(len(indices), n_sigmas))
+        if overwrite:
+            # Overwrite outliers with rolling median values
+            print('Overwriting outliers with rolling median values!')
+            series[indices] = rolling_median[indices]
+
+    return series, indices
+
+
 # ### PV Data
 # 
 # 5-second resolution MiRIS PV from 13/05/2019 to 21/06/2019.
 pv = pd.read_csv('miris_pv.csv', index_col=0, parse_dates=True)
 
-# Resampling the dataset from 5-seconds to 15-minutes resolution (using mean)
-pv = pv.resample('15min').mean()
+# Smoothing the 5-second time-series using a Kaiser filter
+# scipy.signal.windows.kaiser(M, beta, sym=True)
+# beta Window shape
+# 0    Rectangular
+# 5    Similar to a Hamming
+# 6    Similar to a Hann
+# 8.6  Similar to a Blackman
+pv_filter = pv.rolling(window=720, center=True, win_type='kaiser').mean(beta=8.6)
+pv_filter.dropna(inplace=True)
+
+fig, ax = plt.subplots(figsize=(10,4))
+ax.plot(pv.loc['2019-06-02':'2019-06-04'], label='original')
+ax.plot(pv_filter.loc['2019-06-02':'2019-06-04'], lw=1.5, label='filtered')
+ax.legend(loc='upper right')
+ax.set_ylabel('PV')
+ax.grid(which='major', axis='y')
+fig.tight_layout()
+plt.show()
+
+# Resampling the filtered time-series from 5-seconds to 15-minutes resolution
+# (using the mean values)
+pv = pv_filter.resample('15min').mean()
 
 # ### Weather Data
 
@@ -72,7 +162,6 @@ pv = pv.resample('15min').mean()
 #     WS10m = Wind speed at 10m from the ground (m/s)
 
 we = pd.read_csv('weather_data.csv', index_col=0, parse_dates=True)
-
 
 # ### Cleaning data
 
@@ -101,87 +190,19 @@ fig.tight_layout()
 plt.show()
 
 
-def hampel_filter(input_series, window_size, 
-                  scale_factor=1.4826, n_sigmas=3, 
-                  overwrite=True, copy_series=True):
-    """ Hampel filter for time-series data outlier detection and removal.
-
-    Arguments
-    ---------
-    input_series: pd.Series
-        Pandas series holding the original (unfiltered) time-series data.
-    window_size: int
-        Window size for the rolling window statistics of the Hampel filter.
-    scale_factor: float
-        Scale factor for the Hampel filter. Default value is provided with
-        the assumption of the Gaussian distribution of samples.
-    n_sigmas: int
-        Number of standard deviations from the median, above/below which 
-        a data point is marked as outlier. Default value is set at three 
-        standard deviations.
-    overwrite: bool
-        True/False indicator for overwriting the outliers with the median 
-        values, from rolling window statistics.
-    copy_series: bool
-        True/False indicator for making a local copy of the pandas series
-        inside the function.
-
-    Returns
-    -------
-    series: pd.Series
-        New pandas series with outliers replaced (if overwrite=True) with 
-        rolling median values; otherwise, original pd.series object.
-    indices: list
-        List of indices where outliers have been detected (and replaced 
-        if overwrite=True) in the returned pd.series object 'series'. 
-        This list can be empty if there were no outliers detected.
-
-    Notes
-    -----
-    Hampel filter is used for detecting outliers in the time-series data
-    (and their replacement with the rolling-window median values). It is 
-    based on the rolling window statistics of the time-series values. It 
-    flags as outliers any value that lies more than "n_sigmas" from the 
-    median value, calculated using the rolling window approach.
-    """
-    if copy_series:
-        series = input_series.copy()
-    else:
-        series = input_series
-    
-    # Median absolute deviation function 
-    mad = lambda x: np.median(np.abs(x - np.median(x)))
-
-    # Rolling statistics
-    rolling_median = input_series.rolling(window=2*window_size, center=True).median()
-    difference = np.abs(input_series - rolling_median)
-    rolling_mad = scale_factor * input_series.rolling(window=2*window_size, center=True).apply(mad)
-    indices = list(np.argwhere(difference.values > (n_sigmas * rolling_mad.values)).flatten())
-
-    # Overwriting outliers with rolling median values
-    if len(indices) == 0:
-        print('There were no outliers found within {:d} standard deviations.'.format(n_sigmas))
-    else:
-        print('Found {:d} outliers within {:d} standard deviations.'.format(len(indices), n_sigmas))
-        if overwrite:
-            # Overwrite outliers with rolling median values
-            print('Overwriting outliers with rolling median values!')
-            series[indices] = rolling_median[indices] 
-
-    return series, indices
-
-
-# Apply Hampel filter
-filtered, outliers = hampel_filter(df['ST'], window_size=8)
+# Apply a Hampel filter on top of the smoothed PV data
+filtered, outliers = hampel_filter(df['PV'], window_size=8)
 
 # Plot outliers
 fig, ax = plt.subplots(figsize=(12,4))
-ax.plot(df['ST'].index, df['ST'].values, lw=1, c='seagreen', label='ST', zorder=1)
-ax.scatter(df['ST'].index[outliers], df['ST'].values[outliers], 
+ax.plot(df['PV'].index, df['PV'].values, lw=1.5, c='sienna', label='PV', zorder=1)
+ax.scatter(df['PV'].index[outliers], df['PV'].values[outliers],
            marker='o', c='darkred', s=25, label='outliers', zorder=2)
 ax.scatter(filtered.index[outliers], filtered.values[outliers], 
            marker='s', c='navy', s=20, label='corrected', zorder=2)
-ax.set_ylabel('Temp (°C)')
+ax.set_ylabel('PV')
+s = dt.date(2019,5,17)
+ax.set_xlim(s, s+dt.timedelta(days=30))  # limit plot
 ax.grid(which='major', axis='y')
 ax.legend(loc='best')
 fig.tight_layout()
@@ -796,7 +817,7 @@ else:
 
 def plot_multi_step_predictions(walk, y_test, y_pred):
     fig = plt.figure(figsize=(6,5))
-    gx = gs.GridSpec(nrows=2, ncols=1, figure=fig, height_ratios=[3, 1])
+    gx = gs.GridSpec(nrows=2, ncols=1, figure=fig, height_ratios=[3,1])
     ax = np.empty(shape=(2,1), dtype=np.ndarray)
     ax[0,0] = fig.add_subplot(gx[0,0])
     ax[1,0] = fig.add_subplot(gx[1,0], sharex=ax[0,0])
@@ -811,6 +832,7 @@ def plot_multi_step_predictions(walk, y_test, y_pred):
     ax[0,0].grid(axis='y')
     ax[0,0].set_ylabel('PV power')
     ax[1,0].plot(y_test-y_pred, ls='--', lw=1.5, c='red')
+    ax[1,0].fill_between(np.arange(0, len(y_test)), y_test-y_pred, color='tomato', alpha=0.5)
     ax[1,0].axhline(color='black')
     ax[1, 0].set_xlabel('Hour')
     ax[1,0].set_ylabel('Error')
