@@ -825,8 +825,10 @@ def plot_multi_step_predictions(walk, y_test, y_pred):
     ax[0,0].plot(y_test, lw=2.5, label='true values')
     ax[0,0].plot(y_pred, ls='--', lw=1.5, marker='+', ms=10, label='predictions')
     medae = median_absolute_error(y_test, y_pred)
-    ax[0,0].text(STEP-2, 0.35, 'MedAE: {:.3f}'.format(medae),
-                 horizontalalignment='right', fontweight='bold')
+    ax[0,0].text(STEP-8.0, 0.35, 'MedAE: {:.3f}'.format(medae),
+                 fontweight='bold')
+    ax[0,0].text(STEP-8.0, 0.30, 'NRMSE: {:.2f} %'.format(NRMSE*100),
+                 fontweight='bold')
     ax[0,0].legend(loc='upper right')
     ax[0,0].set_ylim(top=0.5)
     ax[0,0].grid(axis='y')
@@ -834,11 +836,10 @@ def plot_multi_step_predictions(walk, y_test, y_pred):
     ax[1,0].plot(y_test-y_pred, ls='--', lw=1.5, c='red')
     ax[1,0].fill_between(np.arange(0, len(y_test)), y_test-y_pred, color='tomato', alpha=0.5)
     ax[1,0].axhline(color='black')
-    ax[1, 0].set_xlabel('Hour')
+    ax[1,0].set_xlabel('Hour')
     ax[1,0].set_ylabel('Error')
     fig.tight_layout()
     plt.show()
-
 
 # Do multi-step ahead predictions
 for k in range(WALK):
@@ -847,15 +848,23 @@ for k in range(WALK):
     y_predict = search_multi.predict(X_test_values.reshape(1,-1)).flatten()
     # Manually correct (small) negative predicted values
     y_predict = np.where(y_predict < 0., 0., y_predict)
-
-    print('Step {:d} of {:d}:'.format(k+1, WALK))
-    # Compute prediction metrics
+    
+    # Common metrics
     mse = mean_squared_error(y_test_values, y_predict)
-    print('MSE: {:.3f}'.format(mse))
     mae = mean_absolute_error(y_test_values, y_predict)
-    print('MAE: {:.3f}'.format(mae))
     medae = median_absolute_error(y_test_values, y_predict)
-    print('MedAE: {:.3f}'.format(medae))
-
+    RMSE = mean_squared_error(y_test_values, y_predict, squared=False)
+    NRMSE = RMSE/np.max(pv.values)
+    
+    print_metrics = True
+    if print_metrics:
+        print('Step {:d} of {:d}:'.format(k+1, WALK))
+        # Compute prediction metrics
+        print('MSE: {:.3f}'.format(mse))
+        print('MAE: {:.3f}'.format(mae))
+        print('MedAE: {:.3f}'.format(medae))
+        print('RMSE: {:.3f} '.format(RMSE))
+        print('NRMSE: {:.2f} %'.format(NRMSE*100))
     # Plot multi-step predictions against true values
     plot_multi_step_predictions(k, y_test_values, y_predict)
+    
