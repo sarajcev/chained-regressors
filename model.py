@@ -128,7 +128,7 @@ def hampel_filter(input_series, window_size,
 # ### PV Data
 # 
 # 5-second resolution MiRIS PV from 13/05/2019 to 21/06/2019.
-pv = pd.read_csv('miris_pv.csv', index_col=0, parse_dates=True)
+pv = pd.read_csv('data/miris_pv.csv', index_col=0, parse_dates=True)
 
 # Smoothing the 5-second time-series using a Kaiser filter
 # scipy.signal.windows.kaiser(M, beta, sym=True)
@@ -173,7 +173,7 @@ pv = pv_filter.resample('15min').mean()
 #     WS100m = Wind speed at 100m from the ground (m/s)
 #     WS10m = Wind speed at 10m from the ground (m/s)
 
-we = pd.read_csv('weather_data.csv', index_col=0, parse_dates=True)
+we = pd.read_csv('data/weather_data.csv', index_col=0, parse_dates=True)
 
 # ### Cleaning data
 
