@@ -12,6 +12,7 @@ import matplotlib.gridspec as gs
 
 try:
     import seaborn as sns
+
     # Seaborn style (figure aesthetics only)
     sns.set(context='paper', style='whitegrid', font_scale=1.2)
     sns.set_style('ticks', {'xtick.direction': 'in',
@@ -36,7 +37,7 @@ from sklearn.decomposition import PCA
 try:
     # Using experimental HalvingRandomSearchCV
     # for hyperparameters optimization
-    from sklearn.experimental import enable_halving_search_cv # noqa
+    from sklearn.experimental import enable_halving_search_cv  # noqa
     from sklearn.model_selection import HalvingRandomSearchCV
 except ImportError:
     print('HalvingRandomSearchCV not found. '
@@ -99,14 +100,14 @@ def hampel_filter(input_series, window_size,
     mad = lambda x: np.median(np.abs(x - np.median(x)))
 
     # Rolling statistics
-    rolling_median = input_series.rolling(window=2*window_size,
+    rolling_median = input_series.rolling(window=2 * window_size,
                                           center=True).median()
     difference = np.abs(input_series - rolling_median)
-    rolling_mad = scale_factor*input_series.rolling(window=2*window_size,
-                                                    center=True).apply(mad)
+    rolling_mad = scale_factor * input_series.rolling(window=2 * window_size,
+                                                      center=True).apply(mad)
     indices = list(
-        np.argwhere(difference.values > (n_sigmas*rolling_mad.values))
-        .flatten()
+        np.argwhere(difference.values > (n_sigmas * rolling_mad.values))
+            .flatten()
     )
 
     # Overwriting outliers with rolling median values
@@ -192,14 +193,13 @@ df.plot(y='PV', ax=ax[0])
 df.plot(y='ST', lw=2, ax=ax[0], secondary_y=True)
 ax[0].set_ylabel('PV')
 ax[0].right_ax.set_ylabel('Temp (°C)')
-sns.regplot(x='PV', y='ST', data=df, ax=ax[1], color='seagreen', 
+sns.regplot(x='PV', y='ST', data=df, ax=ax[1], color='seagreen',
             line_kws={'color': 'darkgreen', 'linewidth': 2},
             scatter_kws={'alpha': 0.25})
 ax[1].set_xlabel('PV')
 ax[1].set_ylabel('')
 fig.tight_layout()
 plt.show()
-
 
 # Apply a Hampel filter on top of the smoothed PV data
 filtered, outliers = hampel_filter(df['PV'], window_size=8)
@@ -210,18 +210,18 @@ ax.plot(df['PV'].index, df['PV'].values,
         lw=1.5, c='sienna', label='PV', zorder=1)
 ax.scatter(df['PV'].index[outliers], df['PV'].values[outliers],
            marker='o', c='darkred', s=25, label='outliers', zorder=2)
-ax.scatter(filtered.index[outliers], filtered.values[outliers], 
+ax.scatter(filtered.index[outliers], filtered.values[outliers],
            marker='s', c='navy', s=20, label='corrected', zorder=2)
 ax.set_ylabel('PV')
 s = dt.date(2019, 5, 17)
-ax.set_xlim(s, s+dt.timedelta(days=30))  # limit plot
+ax.set_xlim(s, s + dt.timedelta(days=30))  # limit plot
 ax.grid(which='major', axis='y')
 ax.legend(loc='best')
 fig.tight_layout()
 plt.show()
 
 
-def plot_correlations(dataframe, column_names, lags=24, 
+def plot_correlations(dataframe, column_names, lags=24,
                       copy_data=True, resample=True):
     """ Autocorrelation (ACF), Partial autocorrelation (PACF) and 
     Cross-correlation (CCF) plots of two different time-series.
@@ -257,27 +257,28 @@ def plot_correlations(dataframe, column_names, lags=24,
         df = dataframe
     if resample:
         df = df.resample('1H').mean()
-    
+
     fig, ax = plt.subplots(nrows=5, ncols=2, figsize=(10, 8))
-    gs = ax[4,0].get_gridspec()
-    ax[4,0].remove(); ax[4,1].remove()
-    ax4 = fig.add_subplot(gs[4,:])
-    df[column_names[0]].plot(ax=ax[0,0], title='Variable: '+column_names[0])
-    df[column_names[1]].plot(ax=ax[0,1], title='Variable: '+column_names[1])
-    df[column_names[0]].plot.hist(bins=12, ax=ax[1,0])
-    df[column_names[1]].plot.hist(bins=12, ax=ax[1,1])
-    sm.graphics.tsa.plot_acf(df[column_names[0]], ax=ax[2,0], lags=24,
+    gs = ax[4, 0].get_gridspec()
+    ax[4, 0].remove()
+    ax[4, 1].remove()
+    ax4 = fig.add_subplot(gs[4, :])
+    df[column_names[0]].plot(ax=ax[0, 0], title='Variable: ' + column_names[0])
+    df[column_names[1]].plot(ax=ax[0, 1], title='Variable: ' + column_names[1])
+    df[column_names[0]].plot.hist(bins=12, ax=ax[1, 0])
+    df[column_names[1]].plot.hist(bins=12, ax=ax[1, 1])
+    sm.graphics.tsa.plot_acf(df[column_names[0]], ax=ax[2, 0], lags=24,
                              title='Autocorrelation')
-    sm.graphics.tsa.plot_pacf(df[column_names[0]], ax=ax[3,0], lags=24,
+    sm.graphics.tsa.plot_pacf(df[column_names[0]], ax=ax[3, 0], lags=24,
                               title='Partial autocorrelation')
-    sm.graphics.tsa.plot_acf(df[column_names[1]], ax=ax[2,1], lags=24,
+    sm.graphics.tsa.plot_acf(df[column_names[1]], ax=ax[2, 1], lags=24,
                              title='Autocorrelation')
-    sm.graphics.tsa.plot_pacf(df[column_names[1]], ax=ax[3,1], lags=24,
+    sm.graphics.tsa.plot_pacf(df[column_names[1]], ax=ax[3, 1], lags=24,
                               title='Partial autocorrelation')
     for axis in ax.flatten()[4:]:
         axis.set_xlabel('Time lag (hours)')
-    ax[2,0].set_ylabel('ACF')
-    ax[3,0].set_ylabel('PACF')
+    ax[2, 0].set_ylabel('ACF')
+    ax[3, 0].set_ylabel('PACF')
     ccf = sm.tsa.stattools.ccf(df[column_names[0]], df[column_names[1]])
     ax4.plot(ccf[:lags])
     ax4.set_title('Cross-correlation between {} and {}'
@@ -292,7 +293,6 @@ def plot_correlations(dataframe, column_names, lags=24,
 # Show plots
 plot_correlations(df, column_names=['PV', 'ST'])
 
-
 # Pearson correlation between PV production and surface temperature
 print('Pearson correlation between PV production and surface temperature:')
 print(df[['PV', 'ST']].corr())
@@ -300,7 +300,7 @@ print(df[['PV', 'ST']].corr())
 
 # ### Features engineering from the time-series data
 
-def engineer_features(dataframe, window=24, steps_ahead=1, 
+def engineer_features(dataframe, window=24, steps_ahead=1,
                       copy_data=True, resample=True, drop_nan_rows=True,
                       weather_data=True):
     """ Engineer features from the time-series data.
@@ -343,51 +343,51 @@ def engineer_features(dataframe, window=24, steps_ahead=1,
         df = dataframe
     if resample:
         df = df.resample('1H').mean()
-    
+
     # Engineer features from time-series data
     if weather_data:
         columns = df.columns
         for col in columns:
-            for i in range(1, window+1):
+            for i in range(1, window + 1):
                 # Shift data by lag of 1 to window=24 hours
-                df[col+'_{:d}h'.format(i)] = df[col].shift(periods=i)  # time-lag
+                df[col + '_{:d}h'.format(i)] = df[col].shift(periods=i)  # time-lag
         for col in columns:
-            df[col+'_diff'] = df[col].diff()  # first-difference
+            df[col + '_diff'] = df[col].diff()  # first-difference
     else:
         # Additional features only for PV only
         # (weather data is completely unused)
-        for i in range(1, window+1):
+        for i in range(1, window + 1):
             # Shift data by lag of 1 to window=24 hours
-            df['PV'+'_{:d}h'.format(i)] = df['PV'].shift(periods=i)  # time-lag
-        df['PV_diff'] = df['PV'].diff()    
+            df['PV' + '_{:d}h'.format(i)] = df['PV'].shift(periods=i)  # time-lag
+        df['PV_diff'] = df['PV'].diff()
     df['PV_diff24'] = df['PV'].diff(24)
 
     # Rolling windows (24-hours) on time-shifted PV production
     df['roll_mean'] = df['PV_1h'].rolling(window=24, win_type='hamming').mean()
     df['roll_max'] = df['PV_1h'].rolling(window=24).max()
-    
+
     # Hour-of-day indicators with cyclical transform
     dayhour_ind = df.index.hour
-    df['hr_sin'] = np.sin(dayhour_ind*(2.*np.pi/24))
-    df['hr_cos'] = np.cos(dayhour_ind*(2.*np.pi/24))
-    
+    df['hr_sin'] = np.sin(dayhour_ind * (2. * np.pi / 24))
+    df['hr_cos'] = np.cos(dayhour_ind * (2. * np.pi / 24))
+
     # Month indicators with cyclical transform
     month_ind = df.index.month
-    df['mnth_sin'] = np.sin((month_ind-1)*(2.*np.pi/12))
-    df['mnth_cos'] = np.cos((month_ind-1)*(2.*np.pi/12))
+    df['mnth_sin'] = np.sin((month_ind - 1) * (2. * np.pi / 12))
+    df['mnth_cos'] = np.cos((month_ind - 1) * (2. * np.pi / 12))
 
     # Encoding sunshine hours
     sun_ind = df['PV'] > 0.
     df['sun'] = sun_ind.astype(int)
 
-    # Forecast horizont
+    # Forecast horizon
     if steps_ahead == 1:
         # Single-step ahead forecasting
         df['PV+0h'] = df['PV'].values
     else:
         # Multi-step ahead forecasting
         for i in range(steps_ahead):
-            df['PV'+'+{:d}h'.format(i)] = df['PV'].shift(-i)
+            df['PV' + '+{:d}h'.format(i)] = df['PV'].shift(-i)
     del df['PV']
 
     # Drop rows with NaN values
@@ -429,8 +429,8 @@ def prepare_data(dataframe, weather_forecast=False, copy_data=True):
         df = dataframe
     if weather_forecast is False:
         # Hour-ahead weather forecast is NOT being utilized
-        df.drop(columns=['CD', 'CM', 'CU', 'PREC', 'RH2m', 'ST', 
-                        'SWD', 'TT2M', 'WS100m', 'WS10m'],
+        df.drop(columns=['CD', 'CM', 'CU', 'PREC', 'RH2m', 'ST',
+                         'SWD', 'TT2M', 'WS100m', 'WS10m'],
                 inplace=True)
 
     columns = df.columns.values
@@ -477,7 +477,9 @@ def exponential_sample_weights(num, shape=1.):
 
 WALK = 12  # walk-forward for WALK hours
 STEP = 24  # multi-step predict for STEP hours ahead
-# With STEP=24 and WALK=12, we are making a 24-hour ahead predictions 
+
+
+# With STEP=24 and WALK=12, we are making a 24-hour ahead predictions
 # after each hour, and move forward in time for 12 hours in total. 
 # In other words, we walk forward for 12 hours, and each time we move 
 # forward (by one hour) we make a brand new 24-hour ahead predictions. 
@@ -522,15 +524,16 @@ def walk_forward(X_values, y_predicted, window=24,
     NotImplementedError
         Walk forward is not implemented with hour-ahead weather forecast.
     """
-    #TODO: Implement a walk forward with the hour-ahead weather forecast.
+    # TODO: Implement a walk forward with the hour-ahead weather forecast.
     if weather_forecast:
         raise NotImplementedError('Walk forward is not implemented with '
                                   'hour-ahead weather forecast.')
-    
+
     # There are eleven different original
     # variables (PV plus 10 weather vars)
     X_parts = []
-    j = 0; k = 0
+    j = 0
+    k = 0
     for i in range(11):
         k = j + window
         X_part = X_values[j:k]
@@ -544,8 +547,8 @@ def walk_forward(X_values, y_predicted, window=24,
             X_part.fillna(method='bfill', inplace=True)  # back-fill
         X_parts.append(X_part.values)
         j += window
-    X_parts = np.asarray(X_parts).reshape(1,-1).flatten()
-    X_rest = X_values[-19:]   # other features (hard-coded)
+    X_parts = np.asarray(X_parts).reshape(1, -1).flatten()
+    X_rest = X_values[-19:]  # other features (hard-coded)
     # Update feature PV_diff with y_predicted
     X_rest[0] = X_parts[0] - X_parts[1]
     # Concatenate
@@ -563,18 +566,18 @@ def plot_predictions(walk, STEP, y_test, y_pred):
         predictions.
     STEP: int
         Denotes the j-th hour of the i-th step.
-    y_test: array_like
+    y_test: pd.Series
         True values.
-    y_pred: array_like
+    y_pred: pd.Series, np.array, list
         Predicted values.
    """
-    plt.figure(figsize=(6,4))
-    plt.title('walk forward +{:2d} hours'.format(walk+1))
-    plt.plot(y_test.values[walk:walk+STEP], lw=2.5, label='true values')
+    plt.figure(figsize=(6, 4))
+    plt.title('walk forward +{:2d} hours'.format(walk + 1))
+    plt.plot(y_test.values[walk:walk + STEP], lw=2.5, label='true values')
     plt.plot(y_pred, ls='--', lw=1.5, marker='+', ms=10, label='predictions')
-    mae = mean_absolute_error(y_test.values[walk:walk+STEP], y_pred)
-    plt.text(STEP-2, 0.35, 'MAE: {:.3f}'.format(mae), 
-             horizontalalignment='right', 
+    mae = mean_absolute_error(y_test.values[walk:walk + STEP], y_pred)
+    plt.text(STEP - 2, 0.35, 'MAE: {:.3f}'.format(mae),
+             horizontalalignment='right',
              fontweight='bold')
     plt.legend(loc='upper right')
     plt.ylim(top=0.5)
@@ -598,38 +601,38 @@ if single_step_model:
     # Print train and test set shapes
     print(X_train.shape, y_train.shape)
     print(X_test.shape, y_test.shape)
-    
-    model = 'RandomForest' # 'AdaBoost'
-    
+
+    model = 'RandomForest'  # 'AdaBoost'
+
     if model == 'RandomForest':
         # Pipeline: SelectKBest and RandomForest
         # SelectKBest is used for features selection/reduction
         selectbest = SelectKBest(score_func=mutual_info_regression, k='all')
         forest = RandomForestRegressor(criterion='mse', bootstrap=True)
         # Creating a pipeline
-        pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
-                               ('kbest', selectbest), 
+        pipe = Pipeline(steps=[('preprocess', 'passthrough'),
+                               ('kbest', selectbest),
                                ('estimator', forest)])
         # Parameters of pipeline for the randomized search with cross-validation
-        param_dists = {'preprocess': [None, StandardScaler()], 
-                       'kbest__k': stats.randint(low=32, high=128), 
+        param_dists = {'preprocess': [None, StandardScaler()],
+                       'kbest__k': stats.randint(low=32, high=128),
                        'estimator__n_estimators': stats.randint(low=200, high=1000),
-                       'estimator__max_depth': [1, 3, 5, None], 
+                       'estimator__max_depth': [1, 3, 5, None],
                        'estimator__max_samples': stats.uniform(loc=0.2, scale=0.8),
-                      }
+                       }
     elif model == 'AdaBoost':
         # AdaBoost with Decision tree regressor (supports multi-output natively)
         ada = AdaBoostRegressor(base_estimator=DecisionTreeRegressor())
         # Creating a pipeline
         pipe = Pipeline(steps=[('estimator', ada)])
         # Parameters of pipeline for the randomized search with cross-validation
-        param_dists = {# Hyper-parameters of the base estimator (DecisionTree)
-                       'estimator__base_estimator__max_depth': [3, 4],  # three-levels deep
-                       'estimator__base_estimator__min_samples_leaf': [1, 2],
-                       # Hyper-parameters of the ensemble estimator (AdaBoost)
-                       'estimator__n_estimators': stats.randint(low=50, high=500),
-                       'estimator__learning_rate': stats.uniform(1e-2, 1e1),
-                       }
+        param_dists = {  # Hyper-parameters of the base estimator (DecisionTree)
+            'estimator__base_estimator__max_depth': [3, 4],  # three-levels deep
+            'estimator__base_estimator__min_samples_leaf': [1, 2],
+            # Hyper-parameters of the ensemble estimator (AdaBoost)
+            'estimator__n_estimators': stats.randint(low=50, high=500),
+            'estimator__learning_rate': stats.uniform(1e-2, 1e1),
+        }
     elif model == 'SVR':
         # Pipeline: SelectKBest and SVR
         # SelectKBest is used for features selection/reduction
@@ -637,21 +640,21 @@ if single_step_model:
         # Support Vector Regression 
         svr = SVR(kernel='rbf', gamma='scale')
         # Creating a pipeline
-        pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
-                               ('kbest', selectbest), 
+        pipe = Pipeline(steps=[('preprocess', 'passthrough'),
+                               ('kbest', selectbest),
                                ('estimator', svr)])
         # Parameters of pipeline for the randomized search with cross-validation
-        param_dists = {'preprocess': [None, StandardScaler()], 
-                       'kbest__k': stats.randint(low=32, high=128), 
+        param_dists = {'preprocess': [None, StandardScaler()],
+                       'kbest__k': stats.randint(low=32, high=128),
                        'estimator__C': stats.loguniform(1e0, 1e3),
                        'estimator__epsilon': stats.loguniform(1e-5, 1e-2),
-                      }
+                       }
     else:
         raise NotImplementedError('Model name "{}" is not recognized '
                                   'or implemented!'.format(model))
 
     NITER = 100  # number of random search iterations
-    NJOBS = -1   # Determine the number of parallel jobs
+    NJOBS = -1  # Determine the number of parallel jobs
 
     sample_weighting = True  # use sample weighting
 
@@ -674,13 +677,13 @@ if single_step_model:
     print('Best parameter (CV score = {:.3f}):'
           .format(search.best_score_))
     print(search.best_params_)
-    
+
     if model == 'RandomForest':
         # Feature importance analysis 
         best_params = {'n_estimators': search.best_params_['estimator__n_estimators'],
                        'max_depth': search.best_params_['estimator__max_depth'],
                        'max_samples': search.best_params_['estimator__max_samples'],
-                      }
+                       }
         forest = RandomForestRegressor(criterion='mse', **best_params)
         forest.fit(X_train, y_train)
 
@@ -691,7 +694,7 @@ if single_step_model:
         pos = np.arange(sorted_idx.shape[0]) + .25
 
         # Plot relative feature importance
-        fig, ax = plt.subplots(figsize=(7,5))
+        fig, ax = plt.subplots(figsize=(7, 5))
         ax.barh(pos, feature_importance[sorted_idx][-TOP:],
                 align='center', color='magenta', alpha=0.6)
         plt.yticks(pos, X_train.columns[sorted_idx][-TOP:])
@@ -699,16 +702,16 @@ if single_step_model:
         ax.grid(axis='x')
         plt.tight_layout()
         plt.show()
-    
+
     # Make single-step predictions for 24 hours ahead
-    y_preds = search.predict(X_test.values[:24,:])
-    
+    y_preds = search.predict(X_test.values[:24, :])
+
     mse = mean_squared_error(y_test.values[:24], y_preds)
     print('MSE:', mse.round(5))
     mae = mean_absolute_error(y_test.values[:24], y_preds)
     print('MAE:', mae.round(5))
-    
-    plt.figure(figsize=(6,4))
+
+    plt.figure(figsize=(6, 4))
     plt.plot(y_test.index[:24], y_test.values[0:24], lw=2, label='true values')
     plt.plot(y_test.index[:24], y_preds, ls='--', lw=1.5,
              marker='+', ms=10, label='predictions')
@@ -723,17 +726,16 @@ if single_step_model:
 
     # Do walk-forward predictions (ONLY if weather_forecast == False)
     for k in range(WALK):
-        X_test_values = X_test.values[k,:]
+        X_test_values = X_test.values[k, :]
         y_pred_values = []
         for i in range(STEP):
             # Predict next time-step value
-            y_predict = search.predict(X_test_values.reshape(1,-1))[0]
+            y_predict = search.predict(X_test_values.reshape(1, -1))[0]
             y_pred_values.append(y_predict)
             # Walk-forward for a single time step
             X_test_values = walk_forward(X_test_values, y_predict)
         # Plot walk-forward predictions against true values
         plot_predictions(k, STEP, y_test, y_pred_values)
-
 
 # ### Multi-step model pipeline without features selection
 
@@ -757,19 +759,19 @@ if multi_model == 'RandomForest':
     # Random Forest Regression (supports multi-output natively)
     forest = RandomForestRegressor(criterion='mse', bootstrap=True)
     # Creating a pipeline
-    pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
+    pipe = Pipeline(steps=[('preprocess', 'passthrough'),
                            ('forest', forest)])
     # Parameters of pipeline for the randomized search with cross-validation
-    param_dists = {'preprocess': [None, StandardScaler()], 
+    param_dists = {'preprocess': [None, StandardScaler()],
                    'forest__n_estimators': stats.randint(low=700, high=1000),
-                   'forest__max_depth': [1, 3, 5, None], 
+                   'forest__max_depth': [1, 3, 5, None],
                    'forest__max_samples': stats.uniform(loc=0.2, scale=0.8),
                    'forest__min_samples_split': stats.randint(low=2, high=11),
                    'forest__min_samples_leaf': stats.randint(low=1, high=11),
                    'forest__max_features': [50, 100, 150, 200, 250, None],
-                  }
+                   }
 elif multi_model == 'DecisionTree':
-    # Decision tree regressor 
+    # Decision tree regressor (supports multi-output natively)
     tree = DecisionTreeRegressor()
     # Creating a pipeline
     pipe = Pipeline(steps=[('tree', tree)])
@@ -779,55 +781,59 @@ elif multi_model == 'DecisionTree':
                    }
 elif multi_model == 'ChainSVR':
     # Support Vector Regression (does NOT support multi-output natively)
+    # Building a regressor chain from the SVM base estimators.
     svr = RegressorChain(base_estimator=SVR(kernel='rbf', cache_size=512))
     # Creating a pipeline
-    pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
+    pipe = Pipeline(steps=[('preprocess', 'passthrough'),
                            ('svr', svr)])
     # Parameters of pipeline for the randomized search with cross-validation
-    param_dists = {'preprocess': [None, StandardScaler()], 
+    param_dists = {'preprocess': [None, StandardScaler()],
                    'svr__base_estimator__C': stats.loguniform(1e0, 1e3),
                    'svr__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
                    'svr__base_estimator__gamma': ['scale', 'auto'],
-                  }                 
+                   }
 elif multi_model == 'MultiSVR':
     # Support Vector Regression (does NOT support multi-output natively)
+    # Creating a multi-output regressor from the SVR base estimators.
     svr = MultiOutputRegressor(estimator=SVR(kernel='rbf'))
     # Creating a pipeline
-    pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
+    pipe = Pipeline(steps=[('preprocess', 'passthrough'),
                            ('svr', svr)])
     # Parameters of pipeline for the randomized search with cross-validation
-    param_dists = {'preprocess': [None, StandardScaler()], 
+    param_dists = {'preprocess': [None, StandardScaler()],
                    'svr__estimator__C': stats.loguniform(1e0, 1e3),
                    'svr__estimator__epsilon': stats.loguniform(1e-5, 1e-2),
                    'svr__estimator__gamma': ['scale', 'auto'],
-                  }
+                   }
 elif multi_model == 'PCA+SVR':
     # Principal Component Analysis (PCA) is used for decomposing 
     # (i.e. projecting) features into the lower-dimensional space
     # while retaining maximum amount of the variance.
     pca = PCA(whiten=True, svd_solver='full')
     # Support Vector Regression (does NOT support multi-output natively)
+    # Building a regressor chain from the SVM base estimators.
     svr = RegressorChain(base_estimator=SVR(kernel='rbf', cache_size=512))
     # Creating a pipeline
-    pipe = Pipeline(steps=[('pca', pca), 
+    pipe = Pipeline(steps=[('pca', pca),
                            ('svr', svr)])
     # Parameters of pipeline for the randomized search with cross-validation
     param_dists = {'pca__n_components': stats.uniform(),
                    'svr__base_estimator__C': stats.loguniform(1e0, 1e3),
                    'svr__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
                    'svr__base_estimator__gamma': ['scale', 'auto'],
-                  }
+                   }
 else:
     raise NotImplementedError('Model name "{}" is not recognized '
                               'or implemented!'.format(multi_model))
 
-NJOBS = -1   # Determine the number of parallel jobs
+NJOBS = -1  # Determine the number of parallel jobs
 print('Running ...')
 
 # Choose a search method for hyperparameters optimization
 search_type = 'HalvingRandomSearchCV'
 
 if search_type == 'RandomizedSearchCV':
+    # Simple random search based strategy.
     time_start = timeit.default_timer()
     search_multi = RandomizedSearchCV(estimator=pipe,
                                       param_distributions=param_dists,
@@ -845,6 +851,7 @@ if search_type == 'RandomizedSearchCV':
     print(search_multi.best_params_)
 
 elif search_type == 'HalvingRandomSearchCV':
+    # Bandit-based successive halving strategy.
     time_start = timeit.default_timer()
     search_multi = HalvingRandomSearchCV(estimator=pipe,
                                          param_distributions=param_dists,
@@ -883,57 +890,58 @@ def plot_multi_step_predictions(walk, STEP, y_test, y_pred, NRMSE):
     NRMSE: float
         Normalized RMSE error (precomputed).
     """
-    fig = plt.figure(figsize=(6,5))
-    gx = gs.GridSpec(nrows=2, ncols=1, figure=fig, height_ratios=[3,1])
-    ax = np.empty(shape=(2,1), dtype=np.ndarray)
-    ax[0,0] = fig.add_subplot(gx[0,0])
-    ax[1,0] = fig.add_subplot(gx[1,0], sharex=ax[0,0])
-    ax[0,0].set_title('walk forward +{:2d} hours'.format(walk+1))
-    ax[0,0].plot(y_test, lw=2.5, label='true values')
-    ax[0,0].plot(y_pred, ls='--', lw=1.5, marker='+', ms=10,
-                 label='predictions')
+    fig = plt.figure(figsize=(6, 5))
+    gx = gs.GridSpec(nrows=2, ncols=1, figure=fig, height_ratios=[3, 1])
+    ax = np.empty(shape=(2, 1), dtype=np.ndarray)
+    ax[0, 0] = fig.add_subplot(gx[0, 0])
+    ax[1, 0] = fig.add_subplot(gx[1, 0], sharex=ax[0, 0])
+    ax[0, 0].set_title('walk forward +{:2d} hours'.format(walk + 1))
+    ax[0, 0].plot(y_test, lw=2.5, label='true values')
+    ax[0, 0].plot(y_pred, ls='--', lw=1.5, marker='+', ms=10,
+                  label='predictions')
     medae = median_absolute_error(y_test, y_pred)
-    ax[0,0].text(STEP-8.0, 0.35, 'MedAE: {:.3f}'.format(medae),
-                 fontweight='bold')
-    ax[0,0].text(STEP-8.0, 0.30, 'NRMSE: {:.2f} %'.format(NRMSE*100),
-                 fontweight='bold')
-    ax[0,0].legend(loc='upper right')
-    ax[0,0].set_ylim(top=0.5)
-    ax[0,0].grid(axis='y')
-    ax[0,0].set_ylabel('PV power')
-    ax[1,0].plot(y_test-y_pred, ls='--', lw=1.5, c='red')
-    ax[1,0].fill_between(np.arange(0, len(y_test)), y_test-y_pred,
-                         color='tomato', alpha=0.5)
-    ax[1,0].axhline(color='black')
-    ax[1,0].set_xlabel('Hour')
-    ax[1,0].set_ylabel('Error')
+    ax[0, 0].text(STEP - 8.0, 0.35, 'MedAE: {:.3f}'.format(medae),
+                  fontweight='bold')
+    ax[0, 0].text(STEP - 8.0, 0.30, 'NRMSE: {:.2f} %'.format(NRMSE * 100),
+                  fontweight='bold')
+    ax[0, 0].legend(loc='upper right')
+    ax[0, 0].set_ylim(top=0.5)
+    ax[0, 0].grid(axis='y')
+    ax[0, 0].set_ylabel('PV power')
+    ax[1, 0].plot(y_test - y_pred, ls='--', lw=1.5, c='red')
+    ax[1, 0].fill_between(np.arange(0, len(y_test)), y_test - y_pred,
+                          color='tomato', alpha=0.5)
+    ax[1, 0].axhline(color='black')
+    ax[1, 0].set_xlabel('Hour')
+    ax[1, 0].set_ylabel('Error')
     fig.tight_layout()
     plt.show()
 
 
 # Do multi-step ahead predictions
 for k in range(WALK):
-    X_test_values = X_test.values[k+20,:]  # +20 hard-coded shift to align views with those
-    y_test_values = y_test.values[k+20,:]  # of walk-forward predictions for easy comparison
-    y_predict = search_multi.predict(X_test_values.reshape(1,-1)).flatten()
+    X_test_values = X_test.values[k + 20, :]  # +20 hard-coded shift to align views with those
+    y_test_values = y_test.values[k + 20, :]  # of walk-forward predictions for easy comparison
+    y_predict = search_multi.predict(X_test_values.reshape(1, -1)).flatten()
     # Manually correct (small) negative predicted values
     y_predict = np.where(y_predict < 0., 0., y_predict)
-    
+
     # Common metrics
     mse = mean_squared_error(y_test_values, y_predict)
     mae = mean_absolute_error(y_test_values, y_predict)
     medae = median_absolute_error(y_test_values, y_predict)
     RMSE = mean_squared_error(y_test_values, y_predict, squared=False)
-    NRMSE = RMSE/np.max(pv.values)
-    
+    NRMSE = RMSE / np.max(pv.values)
+
     print_metrics = True
     if print_metrics:
-        print('Step {:d} of {:d}:'.format(k+1, WALK))
+        print('Step {:d} of {:d}:'.format(k + 1, WALK))
         # Compute prediction metrics
         print('MSE: {:.3f}'.format(mse))
         print('MAE: {:.3f}'.format(mae))
         print('MedAE: {:.3f}'.format(medae))
         print('RMSE: {:.3f} '.format(RMSE))
-        print('NRMSE: {:.2f} %'.format(NRMSE*100))
+        print('NRMSE: {:.2f} %'.format(NRMSE * 100))
+
     # Plot multi-step predictions against true values
     plot_multi_step_predictions(k, STEP, y_test_values, y_predict, NRMSE)
