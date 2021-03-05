@@ -531,7 +531,7 @@ def walk_forward(X_values, y_predicted, window=24, weather_forecast=False):
     return X_values
 
 
-def plot_predictions(walk, y_test, y_pred):
+def plot_predictions(walk, STEP, y_test, y_pred):
     plt.figure(figsize=(6,4))
     plt.title('walk forward +{:2d} hours'.format(walk+1))
     plt.plot(y_test.values[walk:walk+STEP], lw=2.5, label='true values')
@@ -613,7 +613,7 @@ if single_step_model:
         raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(model))
 
     NITER = 100  # number of random search iterations
-    NJOBS = 7    # Determine the number of parallel jobs
+    NJOBS = -1   # Determine the number of parallel jobs
 
     sample_weighting = True  # use sample weighting
 
@@ -691,7 +691,7 @@ if single_step_model:
             # Walk-forward for a single time step
             X_test_values = walk_forward(X_test_values, y_predict)
         # Plot walk-forward predictions against true values
-        plot_predictions(k, y_test, y_pred_values)
+        plot_predictions(k, STEP, y_test, y_pred_values)
 
 
 # ### Multi-step model pipeline without features selection
@@ -737,7 +737,7 @@ elif multi_model == 'DecisionTree':
                    }
 elif multi_model == 'ChainSVR':
     # Support Vector Regression (does NOT support multi-output natively)
-    svr = RegressorChain(SVR(kernel='rbf', cache_size=500))
+    svr = RegressorChain(base_estimator=SVR(kernel='rbf', cache_size=512))
     # Creating a pipeline
     pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
                            ('svr', svr)])
@@ -749,7 +749,7 @@ elif multi_model == 'ChainSVR':
                   }                 
 elif multi_model == 'MultiSVR':
     # Support Vector Regression (does NOT support multi-output natively)
-    svr = MultiOutputRegressor(SVR(kernel='rbf', gamma='scale'))
+    svr = MultiOutputRegressor(estimator=SVR(kernel='rbf'))
     # Creating a pipeline
     pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
                            ('svr', svr)])
@@ -757,6 +757,7 @@ elif multi_model == 'MultiSVR':
     param_dists = {'preprocess': [None, StandardScaler()], 
                    'svr__estimator__C': stats.loguniform(1e0, 1e3),
                    'svr__estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+                   'svr__estimator__gamma': ['scale', 'auto'],
                   }
 elif multi_model == 'PCA+SVR':
     # Principal Component Analysis (PCA) is used for decomposing 
@@ -764,7 +765,7 @@ elif multi_model == 'PCA+SVR':
     # while retaining maximum amount of the variance.
     pca = PCA(whiten=True, svd_solver='full')
     # Support Vector Regression (does NOT support multi-output natively)
-    svr = RegressorChain(SVR(kernel='rbf', cache_size=500))
+    svr = RegressorChain(base_estimator=SVR(kernel='rbf', cache_size=512))
     # Creating a pipeline
     pipe = Pipeline(steps=[('pca', pca), 
                            ('svr', svr)])
@@ -815,7 +816,23 @@ else:
     raise NotImplementedError('Search method "{}" is not recognized or implemented!'.format(search_type))
 
 
-def plot_multi_step_predictions(walk, y_test, y_pred):
+def plot_multi_step_predictions(walk, STEP, y_test, y_pred, NRMSE):
+    """ Plotting multi-step predictions with error rates
+
+    Parameters
+    ----------
+    walk: int
+        Denotes the i-th step during walking forward with a multi-step
+        predictions.
+    STEP: int
+        Denotes the j-th hour of the i-th step.
+    y_test: array_like
+        True values.
+    y_pred: array_like
+        Predicted values.
+    NRMSE: float
+        Normalized RMSE error (precomputed).
+    """
     fig = plt.figure(figsize=(6,5))
     gx = gs.GridSpec(nrows=2, ncols=1, figure=fig, height_ratios=[3,1])
     ax = np.empty(shape=(2,1), dtype=np.ndarray)
@@ -866,5 +883,5 @@ for k in range(WALK):
         print('RMSE: {:.3f} '.format(RMSE))
         print('NRMSE: {:.2f} %'.format(NRMSE*100))
     # Plot multi-step predictions against true values
-    plot_multi_step_predictions(k, y_test_values, y_predict)
+    plot_multi_step_predictions(k, STEP, y_test_values, y_predict, NRMSE)
     
