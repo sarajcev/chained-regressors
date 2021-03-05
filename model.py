@@ -8,6 +8,7 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gs
 
 try:
     import seaborn as sns
@@ -23,6 +24,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import median_absolute_error, mean_absolute_percentage_error
 from sklearn.feature_selection import SelectKBest, mutual_info_regression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -30,9 +32,86 @@ from sklearn.multioutput import MultiOutputRegressor, RegressorChain
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.decomposition import PCA
 
+try:
+    # Using experimental HalvingRandomSearchCV for hyperparameters optimization
+    from sklearn.experimental import enable_halving_search_cv # noqa
+    from sklearn.model_selection import HalvingRandomSearchCV
+except ImportError:
+    print('HalvingRandomSearchCV not found. Update scikit-learn to 0.24.')
+
 from scipy import stats
 
 import statsmodels.api as sm
+
+
+def hampel_filter(input_series, window_size,
+                  scale_factor=1.4826, n_sigmas=3,
+                  overwrite=True, copy_series=True):
+    """ Hampel filter for time-series data outlier detection and removal.
+
+    Arguments
+    ---------
+    input_series: pd.Series
+        Pandas series holding the original (unfiltered) time-series data.
+    window_size: int
+        Window size for the rolling window statistics of the Hampel filter.
+    scale_factor: float
+        Scale factor for the Hampel filter. Default value is provided with
+        the assumption of the Gaussian distribution of samples.
+    n_sigmas: int
+        Number of standard deviations from the median, above/below which
+        a data point is marked as outlier. Default value is set at three
+        standard deviations.
+    overwrite: bool
+        True/False indicator for overwriting the outliers with the median
+        values, from rolling window statistics.
+    copy_series: bool
+        True/False indicator for making a local copy of the pandas series
+        inside the function.
+
+    Returns
+    -------
+    series: pd.Series
+        New pandas series with outliers replaced (if overwrite=True) with
+        rolling median values; otherwise, original pd.series object.
+    indices: list
+        List of indices where outliers have been detected (and replaced
+        if overwrite=True) in the returned pd.series object 'series'.
+        This list can be empty if there were no outliers detected.
+
+    Notes
+    -----
+    Hampel filter is used for detecting outliers in the time-series data
+    (and their replacement with the rolling-window median values). It is
+    based on the rolling window statistics of the time-series values. It
+    flags as outliers any value that lies more than "n_sigmas" from the
+    median value, calculated using the rolling window approach.
+    """
+    if copy_series:
+        series = input_series.copy()
+    else:
+        series = input_series
+
+    # Median absolute deviation function
+    mad = lambda x: np.median(np.abs(x - np.median(x)))
+
+    # Rolling statistics
+    rolling_median = input_series.rolling(window=2 * window_size, center=True).median()
+    difference = np.abs(input_series - rolling_median)
+    rolling_mad = scale_factor * input_series.rolling(window=2 * window_size, center=True).apply(mad)
+    indices = list(np.argwhere(difference.values > (n_sigmas * rolling_mad.values)).flatten())
+
+    # Overwriting outliers with rolling median values
+    if len(indices) == 0:
+        print('There were no outliers found within {:d} standard deviations.'.format(n_sigmas))
+    else:
+        print('Found {:d} outliers within {:d} standard deviations.'.format(len(indices), n_sigmas))
+        if overwrite:
+            # Overwrite outliers with rolling median values
+            print('Overwriting outliers with rolling median values!')
+            series[indices] = rolling_median[indices]
+
+    return series, indices
 
 
 # ### PV Data
@@ -40,8 +119,28 @@ import statsmodels.api as sm
 # 5-second resolution MiRIS PV from 13/05/2019 to 21/06/2019.
 pv = pd.read_csv('miris_pv.csv', index_col=0, parse_dates=True)
 
-# Resampling the dataset from 5-seconds to 15-minutes resolution (using mean)
-pv = pv.resample('15min').mean()
+# Smoothing the 5-second time-series using a Kaiser filter
+# scipy.signal.windows.kaiser(M, beta, sym=True)
+# beta Window shape
+# 0    Rectangular
+# 5    Similar to a Hamming
+# 6    Similar to a Hann
+# 8.6  Similar to a Blackman
+pv_filter = pv.rolling(window=720, center=True, win_type='kaiser').mean(beta=8.6)
+pv_filter.dropna(inplace=True)
+
+fig, ax = plt.subplots(figsize=(10,4))
+ax.plot(pv.loc['2019-06-02':'2019-06-04'], label='original')
+ax.plot(pv_filter.loc['2019-06-02':'2019-06-04'], lw=1.5, label='filtered')
+ax.legend(loc='upper right')
+ax.set_ylabel('PV')
+ax.grid(which='major', axis='y')
+fig.tight_layout()
+plt.show()
+
+# Resampling the filtered time-series from 5-seconds to 15-minutes resolution
+# (using the mean values)
+pv = pv_filter.resample('15min').mean()
 
 # ### Weather Data
 
@@ -63,7 +162,6 @@ pv = pv.resample('15min').mean()
 #     WS10m = Wind speed at 10m from the ground (m/s)
 
 we = pd.read_csv('weather_data.csv', index_col=0, parse_dates=True)
-
 
 # ### Cleaning data
 
@@ -92,87 +190,19 @@ fig.tight_layout()
 plt.show()
 
 
-def hampel_filter(input_series, window_size, 
-                  scale_factor=1.4826, n_sigmas=3, 
-                  overwrite=True, copy_series=True):
-    """ Hampel filter for time-series data outlier detection and removal.
-
-    Arguments
-    ---------
-    input_series: pd.Series
-        Pandas series holding the original (unfiltered) time-series data.
-    window_size: int
-        Window size for the rolling window statistics of the Hampel filter.
-    scale_factor: float
-        Scale factor for the Hampel filter. Default value is provided with
-        the assumption of the Gaussian distribution of samples.
-    n_sigmas: int
-        Number of standard deviations from the median, above/below which 
-        a data point is marked as outlier. Default value is set at three 
-        standard deviations.
-    overwrite: bool
-        True/False indicator for overwriting the outliers with the median 
-        values, from rolling window statistics.
-    copy_series: bool
-        True/False indicator for making a local copy of the pandas series
-        inside the function.
-
-    Returns
-    -------
-    series: pd.Series
-        New pandas series with outliers replaced (if overwrite=True) with 
-        rolling median values; otherwise, original pd.series object.
-    indices: list
-        List of indices where outliers have been detected (and replaced 
-        if overwrite=True) in the returned pd.series object 'series'. 
-        This list can be empty if there were no outliers detected.
-
-    Notes
-    -----
-    Hampel filter is used for detecting outliers in the time-series data
-    (and their replacement with the rolling-window median values). It is 
-    based on the rolling window statistics of the time-series values. It 
-    flags as outliers any value that lies more than "n_sigmas" from the 
-    median value, calculated using the rolling window approach.
-    """
-    if copy_series:
-        series = input_series.copy()
-    else:
-        series = input_series
-    
-    # Median absolute deviation function 
-    mad = lambda x: np.median(np.abs(x - np.median(x)))
-
-    # Rolling statistics
-    rolling_median = input_series.rolling(window=2*window_size, center=True).median()
-    difference = np.abs(input_series - rolling_median)
-    rolling_mad = scale_factor * input_series.rolling(window=2*window_size, center=True).apply(mad)
-    indices = list(np.argwhere(difference.values > (n_sigmas * rolling_mad.values)).flatten())
-
-    # Overwriting outliers with rolling median values
-    if len(indices) == 0:
-        print('There were no outliers found within {:d} standard deviations.'.format(n_sigmas))
-    else:
-        print('Found {:d} outliers within {:d} standard deviations.'.format(len(indices), n_sigmas))
-        if overwrite:
-            # Overwrite outliers with rolling median values
-            print('Overwriting outliers with rolling median values!')
-            series[indices] = rolling_median[indices] 
-
-    return series, indices
-
-
-# Apply Hampel filter
-filtered, outliers = hampel_filter(df['ST'], window_size=8)
+# Apply a Hampel filter on top of the smoothed PV data
+filtered, outliers = hampel_filter(df['PV'], window_size=8)
 
 # Plot outliers
 fig, ax = plt.subplots(figsize=(12,4))
-ax.plot(df['ST'].index, df['ST'].values, lw=1, c='seagreen', label='ST', zorder=1)
-ax.scatter(df['ST'].index[outliers], df['ST'].values[outliers], 
+ax.plot(df['PV'].index, df['PV'].values, lw=1.5, c='sienna', label='PV', zorder=1)
+ax.scatter(df['PV'].index[outliers], df['PV'].values[outliers],
            marker='o', c='darkred', s=25, label='outliers', zorder=2)
 ax.scatter(filtered.index[outliers], filtered.values[outliers], 
            marker='s', c='navy', s=20, label='corrected', zorder=2)
-ax.set_ylabel('Temp (°C)')
+ax.set_ylabel('PV')
+s = dt.date(2019,5,17)
+ax.set_xlim(s, s+dt.timedelta(days=30))  # limit plot
 ax.grid(which='major', axis='y')
 ax.legend(loc='best')
 fig.tight_layout()
@@ -747,38 +777,69 @@ elif multi_model == 'PCA+SVR':
 else:
     raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(multi_model))
 
-NITER = 100  # number of random search iterations
-NJOBS = 7    # Determine the number of parallel jobs
+NJOBS = -1   # Determine the number of parallel jobs
 print('Running ...')
-time_start = timeit.default_timer()
-search_multi = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists, 
-                                  cv=TimeSeriesSplit(n_splits=3),
-                                  scoring='neg_mean_squared_error',
-                                  n_iter=NITER, refit=True, n_jobs=NJOBS)
-search_multi.fit(X_train, y_train)
-time_end = timeit.default_timer()
-time_elapsed = time_end - time_start
-print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
-print('Best parameter (CV score = {:.3f}):'.format(search_multi.best_score_))
-print(search_multi.best_params_)
+
+# Choose a search method for hyperparameters optimization
+search_type = 'HalvingRandomSearchCV'
+
+if search_type == 'RandomizedSearchCV':
+    time_start = timeit.default_timer()
+    search_multi = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists,
+                                      cv=TimeSeriesSplit(n_splits=3),
+                                      scoring='neg_mean_squared_error',
+                                      n_iter=100,  # number of random search iterations
+                                      refit=True, n_jobs=NJOBS)
+    search_multi.fit(X_train, y_train)
+    time_end = timeit.default_timer()
+    time_elapsed = time_end - time_start
+    print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
+    print('Best parameter (CV score = {:.3f}):'.format(search_multi.best_score_))
+    print(search_multi.best_params_)
+
+elif search_type == 'HalvingRandomSearchCV':
+    time_start = timeit.default_timer()
+    search_multi = HalvingRandomSearchCV(estimator=pipe, param_distributions=param_dists,
+                                         cv=TimeSeriesSplit(n_splits=3),
+                                         scoring='neg_mean_squared_error',
+                                         factor=2,
+                                         refit=True, n_jobs=NJOBS)
+    search_multi.fit(X_train, y_train)
+    time_end = timeit.default_timer()
+    time_elapsed = time_end - time_start
+    print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
+    print('Best parameter (CV score = {:.3f}):'.format(search_multi.best_score_))
+    print(search_multi.best_params_)
+
+else:
+    raise NotImplementedError('Search method "{}" is not recognized or implemented!'.format(search_type))
 
 
 def plot_multi_step_predictions(walk, y_test, y_pred):
-    plt.figure(figsize=(6,4))
-    plt.title('walk forward +{:2d} hours'.format(walk+1))
-    plt.plot(y_test, lw=2.5, label='true values')
-    plt.plot(y_pred, ls='--', lw=1.5, marker='+', ms=10, label='predictions')
-    mae = mean_absolute_error(y_test, y_pred)
-    plt.text(STEP-2, 0.35, 'MAE: {:.3f}'.format(mae), 
-             horizontalalignment='right', 
-             fontweight='bold')
-    plt.legend(loc='upper right')
-    plt.ylim(top=0.5)
-    plt.grid(axis='y')
-    plt.xlabel('Hour')
-    plt.ylabel('PV power')
+    fig = plt.figure(figsize=(6,5))
+    gx = gs.GridSpec(nrows=2, ncols=1, figure=fig, height_ratios=[3,1])
+    ax = np.empty(shape=(2,1), dtype=np.ndarray)
+    ax[0,0] = fig.add_subplot(gx[0,0])
+    ax[1,0] = fig.add_subplot(gx[1,0], sharex=ax[0,0])
+    ax[0,0].set_title('walk forward +{:2d} hours'.format(walk+1))
+    ax[0,0].plot(y_test, lw=2.5, label='true values')
+    ax[0,0].plot(y_pred, ls='--', lw=1.5, marker='+', ms=10, label='predictions')
+    medae = median_absolute_error(y_test, y_pred)
+    ax[0,0].text(STEP-8.0, 0.35, 'MedAE: {:.3f}'.format(medae),
+                 fontweight='bold')
+    ax[0,0].text(STEP-8.0, 0.30, 'NRMSE: {:.2f} %'.format(NRMSE*100),
+                 fontweight='bold')
+    ax[0,0].legend(loc='upper right')
+    ax[0,0].set_ylim(top=0.5)
+    ax[0,0].grid(axis='y')
+    ax[0,0].set_ylabel('PV power')
+    ax[1,0].plot(y_test-y_pred, ls='--', lw=1.5, c='red')
+    ax[1,0].fill_between(np.arange(0, len(y_test)), y_test-y_pred, color='tomato', alpha=0.5)
+    ax[1,0].axhline(color='black')
+    ax[1,0].set_xlabel('Hour')
+    ax[1,0].set_ylabel('Error')
+    fig.tight_layout()
     plt.show()
-
 
 # Do multi-step ahead predictions
 for k in range(WALK):
@@ -787,6 +848,23 @@ for k in range(WALK):
     y_predict = search_multi.predict(X_test_values.reshape(1,-1)).flatten()
     # Manually correct (small) negative predicted values
     y_predict = np.where(y_predict < 0., 0., y_predict)
+    
+    # Common metrics
+    mse = mean_squared_error(y_test_values, y_predict)
+    mae = mean_absolute_error(y_test_values, y_predict)
+    medae = median_absolute_error(y_test_values, y_predict)
+    RMSE = mean_squared_error(y_test_values, y_predict, squared=False)
+    NRMSE = RMSE/np.max(pv.values)
+    
+    print_metrics = True
+    if print_metrics:
+        print('Step {:d} of {:d}:'.format(k+1, WALK))
+        # Compute prediction metrics
+        print('MSE: {:.3f}'.format(mse))
+        print('MAE: {:.3f}'.format(mae))
+        print('MedAE: {:.3f}'.format(medae))
+        print('RMSE: {:.3f} '.format(RMSE))
+        print('NRMSE: {:.2f} %'.format(NRMSE*100))
     # Plot multi-step predictions against true values
     plot_multi_step_predictions(k, y_test_values, y_predict)
-
+    
