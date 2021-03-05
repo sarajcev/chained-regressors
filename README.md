@@ -1,5 +1,7 @@
 ## ML Seminar
 
-EIT postgraduate course seminar
+![Flake8 workflow](https://github.com/sarajcev/Seminar/actions/workflows/python-app.yml/badge.svg)
 
-Time-series forecasting of PV production using scikit-learn
+EIT postgraduate course seminar in Machine Learning for Power System Analysis
+
+Multi-step time-series forecasting of PV production using chained regressors from `scikit-learn`.
