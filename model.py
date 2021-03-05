@@ -14,7 +14,8 @@ try:
     import seaborn as sns
     # Seaborn style (figure aesthetics only)
     sns.set(context='paper', style='whitegrid', font_scale=1.2)
-    sns.set_style('ticks', {'xtick.direction':'in', 'ytick.direction':'in'})
+    sns.set_style('ticks', {'xtick.direction': 'in',
+                            'ytick.direction': 'in'})
 except ImportError:
     print('Seaborn not installed. Going without it.')
 
@@ -24,7 +25,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-from sklearn.metrics import median_absolute_error, mean_absolute_percentage_error
+from sklearn.metrics import median_absolute_error
 from sklearn.feature_selection import SelectKBest, mutual_info_regression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -33,11 +34,13 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.decomposition import PCA
 
 try:
-    # Using experimental HalvingRandomSearchCV for hyperparameters optimization
+    # Using experimental HalvingRandomSearchCV
+    # for hyperparameters optimization
     from sklearn.experimental import enable_halving_search_cv # noqa
     from sklearn.model_selection import HalvingRandomSearchCV
 except ImportError:
-    print('HalvingRandomSearchCV not found. Update scikit-learn to 0.24.')
+    print('HalvingRandomSearchCV not found. '
+          'Update scikit-learn to 0.24.')
 
 from scipy import stats
 
@@ -96,16 +99,23 @@ def hampel_filter(input_series, window_size,
     mad = lambda x: np.median(np.abs(x - np.median(x)))
 
     # Rolling statistics
-    rolling_median = input_series.rolling(window=2 * window_size, center=True).median()
+    rolling_median = input_series.rolling(window=2*window_size,
+                                          center=True).median()
     difference = np.abs(input_series - rolling_median)
-    rolling_mad = scale_factor * input_series.rolling(window=2 * window_size, center=True).apply(mad)
-    indices = list(np.argwhere(difference.values > (n_sigmas * rolling_mad.values)).flatten())
+    rolling_mad = scale_factor*input_series.rolling(window=2*window_size,
+                                                    center=True).apply(mad)
+    indices = list(
+        np.argwhere(difference.values > (n_sigmas*rolling_mad.values))
+        .flatten()
+    )
 
     # Overwriting outliers with rolling median values
     if len(indices) == 0:
-        print('There were no outliers found within {:d} standard deviations.'.format(n_sigmas))
+        print('There were no outliers found within '
+              '{:d} standard deviations.'.format(n_sigmas))
     else:
-        print('Found {:d} outliers within {:d} standard deviations.'.format(len(indices), n_sigmas))
+        print('Found {:d} outliers within '
+              '{:d} standard deviations.'.format(len(indices), n_sigmas))
         if overwrite:
             # Overwrite outliers with rolling median values
             print('Overwriting outliers with rolling median values!')
@@ -126,10 +136,11 @@ pv = pd.read_csv('miris_pv.csv', index_col=0, parse_dates=True)
 # 5    Similar to a Hamming
 # 6    Similar to a Hann
 # 8.6  Similar to a Blackman
-pv_filter = pv.rolling(window=720, center=True, win_type='kaiser').mean(beta=8.6)
+pv_filter = pv.rolling(window=720, center=True,
+                       win_type='kaiser').mean(beta=8.6, sym=True)
 pv_filter.dropna(inplace=True)
 
-fig, ax = plt.subplots(figsize=(10,4))
+fig, ax = plt.subplots(figsize=(10, 4))
 ax.plot(pv.loc['2019-06-02':'2019-06-04'], label='original')
 ax.plot(pv_filter.loc['2019-06-02':'2019-06-04'], lw=1.5, label='filtered')
 ax.legend(loc='upper right')
@@ -138,8 +149,8 @@ ax.grid(which='major', axis='y')
 fig.tight_layout()
 plt.show()
 
-# Resampling the filtered time-series from 5-seconds to 15-minutes resolution
-# (using the mean values)
+# Resampling the filtered time-series from 5-seconds to 15-minutes
+# resolution (using the mean values)
 pv = pv_filter.resample('15min').mean()
 
 # ### Weather Data
@@ -175,15 +186,15 @@ df.dropna(inplace=True)
 df.head()
 
 # PV production and surface temp. data series plot
-fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(12,4), 
+fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(12, 4),
                        gridspec_kw={'width_ratios': [3, 1]})
 df.plot(y='PV', ax=ax[0])
 df.plot(y='ST', lw=2, ax=ax[0], secondary_y=True)
 ax[0].set_ylabel('PV')
 ax[0].right_ax.set_ylabel('Temp (°C)')
 sns.regplot(x='PV', y='ST', data=df, ax=ax[1], color='seagreen', 
-            line_kws={'color':'darkgreen', 'linewidth':2},
-            scatter_kws={'alpha':0.25})
+            line_kws={'color': 'darkgreen', 'linewidth': 2},
+            scatter_kws={'alpha': 0.25})
 ax[1].set_xlabel('PV')
 ax[1].set_ylabel('')
 fig.tight_layout()
@@ -194,14 +205,15 @@ plt.show()
 filtered, outliers = hampel_filter(df['PV'], window_size=8)
 
 # Plot outliers
-fig, ax = plt.subplots(figsize=(12,4))
-ax.plot(df['PV'].index, df['PV'].values, lw=1.5, c='sienna', label='PV', zorder=1)
+fig, ax = plt.subplots(figsize=(12, 4))
+ax.plot(df['PV'].index, df['PV'].values,
+        lw=1.5, c='sienna', label='PV', zorder=1)
 ax.scatter(df['PV'].index[outliers], df['PV'].values[outliers],
            marker='o', c='darkred', s=25, label='outliers', zorder=2)
 ax.scatter(filtered.index[outliers], filtered.values[outliers], 
            marker='s', c='navy', s=20, label='corrected', zorder=2)
 ax.set_ylabel('PV')
-s = dt.date(2019,5,17)
+s = dt.date(2019, 5, 17)
 ax.set_xlim(s, s+dt.timedelta(days=30))  # limit plot
 ax.grid(which='major', axis='y')
 ax.legend(loc='best')
@@ -220,11 +232,11 @@ def plot_correlations(dataframe, column_names, lags=24,
         Pandas dataframe holding the original time-series data 
         (in the long table format).
     column_names: list
-        List of two column names from the dataframe which provide time-series
-        data for creating the ACF, PACF and CCF plots.
+        List of two column names from the dataframe which provide
+        time-series data for creating the ACF, PACF and CCF plots.
     lags: int
-        Time lags used for the autocorrelation, partial autocorrelation and 
-        cross-correlation plots.
+        Time lags used for the autocorrelation, partial autocorrelation
+        and cross-correlation plots.
     copy_data: bool
         True/False indicator for making a local copy of the dataframe
         inside the function.
@@ -233,10 +245,11 @@ def plot_correlations(dataframe, column_names, lags=24,
    
     Notes
     -----
-    Function displays a matplotlib plot of the time-series data, histograms, as
-    well as the autocorrelation, partial autocorrelation and cross-correlation 
-    of the selected time-series variables. These figures can aid in determining
-    the most appropriate time shifts (lags) for the features engineering.
+    Function displays a matplotlib plot of the time-series data,
+    histograms, as well as the autocorrelation, partial autocorrelation
+    and cross-correlation of the selected time-series variables. These
+    figures can aid in determining the most appropriate time shifts
+    (lags) for the features engineering.
     """
     if copy_data:
         df = dataframe.copy()
@@ -245,7 +258,7 @@ def plot_correlations(dataframe, column_names, lags=24,
     if resample:
         df = df.resample('1H').mean()
     
-    fig, ax = plt.subplots(nrows=5, ncols=2, figsize=(10,8))
+    fig, ax = plt.subplots(nrows=5, ncols=2, figsize=(10, 8))
     gs = ax[4,0].get_gridspec()
     ax[4,0].remove(); ax[4,1].remove()
     ax4 = fig.add_subplot(gs[4,:])
@@ -253,22 +266,28 @@ def plot_correlations(dataframe, column_names, lags=24,
     df[column_names[1]].plot(ax=ax[0,1], title='Variable: '+column_names[1])
     df[column_names[0]].plot.hist(bins=12, ax=ax[1,0])
     df[column_names[1]].plot.hist(bins=12, ax=ax[1,1])
-    sm.graphics.tsa.plot_acf(df[column_names[0]], ax=ax[2,0], lags=24, title='Autocorrelation')
-    sm.graphics.tsa.plot_pacf(df[column_names[0]], ax=ax[3,0], lags=24, title='Partial autocorrelation')
-    sm.graphics.tsa.plot_acf(df[column_names[1]], ax=ax[2,1], lags=24, title='Autocorrelation')
-    sm.graphics.tsa.plot_pacf(df[column_names[1]], ax=ax[3,1], lags=24, title='Partial autocorrelation')
+    sm.graphics.tsa.plot_acf(df[column_names[0]], ax=ax[2,0], lags=24,
+                             title='Autocorrelation')
+    sm.graphics.tsa.plot_pacf(df[column_names[0]], ax=ax[3,0], lags=24,
+                              title='Partial autocorrelation')
+    sm.graphics.tsa.plot_acf(df[column_names[1]], ax=ax[2,1], lags=24,
+                             title='Autocorrelation')
+    sm.graphics.tsa.plot_pacf(df[column_names[1]], ax=ax[3,1], lags=24,
+                              title='Partial autocorrelation')
     for axis in ax.flatten()[4:]:
         axis.set_xlabel('Time lag (hours)')
     ax[2,0].set_ylabel('ACF')
     ax[3,0].set_ylabel('PACF')
     ccf = sm.tsa.stattools.ccf(df[column_names[0]], df[column_names[1]])
     ax4.plot(ccf[:lags])
-    ax4.set_title('Cross-correlation between {} and {}'.format(column_names[0], column_names[1]))
+    ax4.set_title('Cross-correlation between {} and {}'
+                  .format(column_names[0], column_names[1]))
     ax4.set_xlabel('Time lag (hours)')
     ax4.set_ylabel('CCF')
     fig.tight_layout()
     plt.show()
     return
+
 
 # Show plots
 plot_correlations(df, column_names=['PV', 'ST'])
@@ -335,7 +354,8 @@ def engineer_features(dataframe, window=24, steps_ahead=1,
         for col in columns:
             df[col+'_diff'] = df[col].diff()  # first-difference
     else:
-        # Additional features only for PV only (weather data is completely unused)
+        # Additional features only for PV only
+        # (weather data is completely unused)
         for i in range(1, window+1):
             # Shift data by lag of 1 to window=24 hours
             df['PV'+'_{:d}h'.format(i)] = df['PV'].shift(periods=i)  # time-lag
@@ -467,7 +487,8 @@ STEP = 24  # multi-step predict for STEP hours ahead
 # values to make new predictions!
 
 
-def walk_forward(X_values, y_predicted, window=24, weather_forecast=False):
+def walk_forward(X_values, y_predicted, window=24,
+                 weather_forecast=False):
     """ Walk forward
 
     Preparing input matrix X for walk-forward single-step predictions.
@@ -503,7 +524,8 @@ def walk_forward(X_values, y_predicted, window=24, weather_forecast=False):
     """
     #TODO: Implement a walk forward with the hour-ahead weather forecast.
     if weather_forecast:
-        raise NotImplementedError('Walk forward is not implemented with hour-ahead weather forecast.')
+        raise NotImplementedError('Walk forward is not implemented with '
+                                  'hour-ahead weather forecast.')
     
     # There are eleven different original
     # variables (PV plus 10 weather vars)
@@ -532,6 +554,20 @@ def walk_forward(X_values, y_predicted, window=24, weather_forecast=False):
 
 
 def plot_predictions(walk, STEP, y_test, y_pred):
+    """ Plotting single-step predictions.
+
+    Parameters
+    ----------
+    walk: int
+        Denotes the i-th step during walking forward with a multi-step
+        predictions.
+    STEP: int
+        Denotes the j-th hour of the i-th step.
+    y_test: array_like
+        True values.
+    y_pred: array_like
+        Predicted values.
+   """
     plt.figure(figsize=(6,4))
     plt.title('walk forward +{:2d} hours'.format(walk+1))
     plt.plot(y_test.values[walk:walk+STEP], lw=2.5, label='true values')
@@ -557,7 +593,8 @@ if single_step_model:
     # Prepare dataframe for a split into train, test sets
     X, y = prepare_data(df2)
     # Train and test dataset split (w/o shuffle)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, shuffle=False)
+    X_train, X_test, y_train, y_test = \
+        train_test_split(X, y, train_size=0.8, shuffle=False)
     # Print train and test set shapes
     print(X_train.shape, y_train.shape)
     print(X_test.shape, y_test.shape)
@@ -610,7 +647,8 @@ if single_step_model:
                        'estimator__epsilon': stats.loguniform(1e-5, 1e-2),
                       }
     else:
-        raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(model))
+        raise NotImplementedError('Model name "{}" is not recognized '
+                                  'or implemented!'.format(model))
 
     NITER = 100  # number of random search iterations
     NJOBS = -1   # Determine the number of parallel jobs
@@ -618,7 +656,8 @@ if single_step_model:
     sample_weighting = True  # use sample weighting
 
     time_start = timeit.default_timer()
-    search = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists, 
+    search = RandomizedSearchCV(estimator=pipe,
+                                param_distributions=param_dists,
                                 cv=TimeSeriesSplit(n_splits=3),
                                 scoring='neg_mean_squared_error',
                                 n_iter=NITER, refit=True, n_jobs=NJOBS)
@@ -630,8 +669,10 @@ if single_step_model:
         search.fit(X_train, y_train)
     time_end = timeit.default_timer()
     time_elapsed = time_end - time_start
-    print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
-    print('Best parameter (CV score = {:.3f}):'.format(search.best_score_))
+    print('Execution time (hour:min:sec): {}'
+          .format(str(dt.timedelta(seconds=time_elapsed))))
+    print('Best parameter (CV score = {:.3f}):'
+          .format(search.best_score_))
     print(search.best_params_)
     
     if model == 'RandomForest':
@@ -702,7 +743,8 @@ df2 = engineer_features(df, steps_ahead=STEP, weather_data=False)
 X, y = prepare_data(df2)
 
 # Train and test dataset split (w/o shuffle)
-X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, shuffle=False)
+X_train, X_test, y_train, y_test = \
+    train_test_split(X, y, train_size=0.8, shuffle=False)
 
 # Print train and test set shapes
 print('Train and test set data shapes:')
@@ -776,7 +818,8 @@ elif multi_model == 'PCA+SVR':
                    'svr__base_estimator__gamma': ['scale', 'auto'],
                   }
 else:
-    raise NotImplementedError('Model name "{}" is not recognized or implemented!'.format(multi_model))
+    raise NotImplementedError('Model name "{}" is not recognized '
+                              'or implemented!'.format(multi_model))
 
 NJOBS = -1   # Determine the number of parallel jobs
 print('Running ...')
@@ -786,7 +829,8 @@ search_type = 'HalvingRandomSearchCV'
 
 if search_type == 'RandomizedSearchCV':
     time_start = timeit.default_timer()
-    search_multi = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists,
+    search_multi = RandomizedSearchCV(estimator=pipe,
+                                      param_distributions=param_dists,
                                       cv=TimeSeriesSplit(n_splits=3),
                                       scoring='neg_mean_squared_error',
                                       n_iter=100,  # number of random search iterations
@@ -794,13 +838,16 @@ if search_type == 'RandomizedSearchCV':
     search_multi.fit(X_train, y_train)
     time_end = timeit.default_timer()
     time_elapsed = time_end - time_start
-    print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
-    print('Best parameter (CV score = {:.3f}):'.format(search_multi.best_score_))
+    print('Execution time (hour:min:sec): {}'
+          .format(str(dt.timedelta(seconds=time_elapsed))))
+    print('Best parameter (CV score = {:.3f}):'
+          .format(search_multi.best_score_))
     print(search_multi.best_params_)
 
 elif search_type == 'HalvingRandomSearchCV':
     time_start = timeit.default_timer()
-    search_multi = HalvingRandomSearchCV(estimator=pipe, param_distributions=param_dists,
+    search_multi = HalvingRandomSearchCV(estimator=pipe,
+                                         param_distributions=param_dists,
                                          cv=TimeSeriesSplit(n_splits=3),
                                          scoring='neg_mean_squared_error',
                                          factor=2,
@@ -808,16 +855,19 @@ elif search_type == 'HalvingRandomSearchCV':
     search_multi.fit(X_train, y_train)
     time_end = timeit.default_timer()
     time_elapsed = time_end - time_start
-    print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
-    print('Best parameter (CV score = {:.3f}):'.format(search_multi.best_score_))
+    print('Execution time (hour:min:sec): {}'
+          .format(str(dt.timedelta(seconds=time_elapsed))))
+    print('Best parameter (CV score = {:.3f}):'
+          .format(search_multi.best_score_))
     print(search_multi.best_params_)
 
 else:
-    raise NotImplementedError('Search method "{}" is not recognized or implemented!'.format(search_type))
+    raise NotImplementedError('Search method "{}" is not recognized '
+                              'or implemented!'.format(search_type))
 
 
 def plot_multi_step_predictions(walk, STEP, y_test, y_pred, NRMSE):
-    """ Plotting multi-step predictions with error rates
+    """ Plotting multi-step predictions with error rates.
 
     Parameters
     ----------
@@ -840,7 +890,8 @@ def plot_multi_step_predictions(walk, STEP, y_test, y_pred, NRMSE):
     ax[1,0] = fig.add_subplot(gx[1,0], sharex=ax[0,0])
     ax[0,0].set_title('walk forward +{:2d} hours'.format(walk+1))
     ax[0,0].plot(y_test, lw=2.5, label='true values')
-    ax[0,0].plot(y_pred, ls='--', lw=1.5, marker='+', ms=10, label='predictions')
+    ax[0,0].plot(y_pred, ls='--', lw=1.5, marker='+', ms=10,
+                 label='predictions')
     medae = median_absolute_error(y_test, y_pred)
     ax[0,0].text(STEP-8.0, 0.35, 'MedAE: {:.3f}'.format(medae),
                  fontweight='bold')
@@ -851,12 +902,14 @@ def plot_multi_step_predictions(walk, STEP, y_test, y_pred, NRMSE):
     ax[0,0].grid(axis='y')
     ax[0,0].set_ylabel('PV power')
     ax[1,0].plot(y_test-y_pred, ls='--', lw=1.5, c='red')
-    ax[1,0].fill_between(np.arange(0, len(y_test)), y_test-y_pred, color='tomato', alpha=0.5)
+    ax[1,0].fill_between(np.arange(0, len(y_test)), y_test-y_pred,
+                         color='tomato', alpha=0.5)
     ax[1,0].axhline(color='black')
     ax[1,0].set_xlabel('Hour')
     ax[1,0].set_ylabel('Error')
     fig.tight_layout()
     plt.show()
+
 
 # Do multi-step ahead predictions
 for k in range(WALK):
@@ -884,4 +937,3 @@ for k in range(WALK):
         print('NRMSE: {:.2f} %'.format(NRMSE*100))
     # Plot multi-step predictions against true values
     plot_multi_step_predictions(k, STEP, y_test_values, y_predict, NRMSE)
-    
