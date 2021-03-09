@@ -7,18 +7,11 @@ import timeit
 import datetime as dt
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gs
 
-try:
-    import seaborn as sns
-
-    # Seaborn style (figure aesthetics only)
-    sns.set(context='paper', style='whitegrid', font_scale=1.2)
-    sns.set_style('ticks', {'xtick.direction': 'in',
-                            'ytick.direction': 'in'})
-except ImportError:
-    print('Seaborn not installed. Going without it.')
+from scipy import stats
 
 from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
@@ -35,17 +28,19 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.decomposition import PCA
 
 try:
-    # Using experimental HalvingRandomSearchCV
-    # for hyperparameters optimization
+    # Using experimental HalvingRandomSearchCV for hyperparameters optimization
     from sklearn.experimental import enable_halving_search_cv  # noqa
     from sklearn.model_selection import HalvingRandomSearchCV
 except ImportError:
-    print('HalvingRandomSearchCV not found. '
-          'Update scikit-learn to 0.24.')
+    print('HalvingRandomSearchCV not found. Update scikit-learn to 0.24.')
 
-from scipy import stats
-
-import statsmodels.api as sm
+try:
+    import seaborn as sns
+    # Seaborn style (figure aesthetics only)
+    sns.set(context='paper', style='whitegrid', font_scale=1.2)
+    sns.set_style('ticks', {'xtick.direction': 'in', 'ytick.direction': 'in'})
+except ImportError:
+    print('Seaborn not installed. Going without it.')
 
 
 def hampel_filter(input_series, window_size,
@@ -299,7 +294,6 @@ print(df[['PV', 'ST']].corr())
 
 
 # ### Features engineering from the time-series data
-
 def engineer_features(dataframe, window=24, steps_ahead=1,
                       copy_data=True, resample=True, drop_nan_rows=True,
                       weather_data=True):
@@ -402,7 +396,6 @@ df2 = engineer_features(df)
 
 
 # ### Train, validation, and test datasets (time-series data)
-
 def prepare_data(dataframe, weather_forecast=False, copy_data=True):
     """ Prepare dataframe for spliting into train and test sets.
 
@@ -477,7 +470,6 @@ def exponential_sample_weights(num, shape=1.):
 
 WALK = 12  # walk-forward for WALK hours
 STEP = 24  # multi-step predict for STEP hours ahead
-
 
 # With STEP=24 and WALK=12, we are making a 24-hour ahead predictions
 # after each hour, and move forward in time for 12 hours in total. 
@@ -737,6 +729,7 @@ if single_step_model:
         # Plot walk-forward predictions against true values
         plot_predictions(k, STEP, y_test, y_pred_values)
 
+
 # ### Multi-step model pipeline without features selection
 
 # Multi-step model (24-hours ahead)
@@ -827,7 +820,8 @@ else:
                               'or implemented!'.format(multi_model))
 
 NJOBS = -1  # Determine the number of parallel jobs
-print('Running ...')
+print('\nRunning: {}'.format(multi_model))
+print('Please wait ...')
 
 # Choose a search method for hyperparameters optimization
 search_type = 'HalvingRandomSearchCV'
@@ -926,7 +920,7 @@ for k in range(WALK):
     # Manually correct (small) negative predicted values
     y_predict = np.where(y_predict < 0., 0., y_predict)
 
-    # Common metrics
+    # Compute common prediction metrics
     mse = mean_squared_error(y_test_values, y_predict)
     mae = mean_absolute_error(y_test_values, y_predict)
     medae = median_absolute_error(y_test_values, y_predict)
@@ -936,7 +930,7 @@ for k in range(WALK):
     print_metrics = True
     if print_metrics:
         print('Step {:d} of {:d}:'.format(k + 1, WALK))
-        # Compute prediction metrics
+        # Common prediction metrics
         print('MSE: {:.3f}'.format(mse))
         print('MAE: {:.3f}'.format(mae))
         print('MedAE: {:.3f}'.format(medae))
