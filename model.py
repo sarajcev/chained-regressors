@@ -120,6 +120,9 @@ def hampel_filter(input_series, window_size,
     return series, indices
 
 
+# Show/hide all intermediate plots
+SHOW_PLOTS = True
+
 # ### PV Data
 # 
 # 5-second resolution MiRIS PV from 13/05/2019 to 21/06/2019.
@@ -136,14 +139,15 @@ pv_filter = pv.rolling(window=720, center=True,
                        win_type='kaiser').mean(beta=8.6, sym=True)
 pv_filter.dropna(inplace=True)
 
-fig, ax = plt.subplots(figsize=(10, 4))
-ax.plot(pv.loc['2019-06-02':'2019-06-04'], label='original')
-ax.plot(pv_filter.loc['2019-06-02':'2019-06-04'], lw=1.5, label='filtered')
-ax.legend(loc='upper right')
-ax.set_ylabel('PV')
-ax.grid(which='major', axis='y')
-fig.tight_layout()
-plt.show()
+if SHOW_PLOTS:
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(pv.loc['2019-06-02':'2019-06-04'], label='original')
+    ax.plot(pv_filter.loc['2019-06-02':'2019-06-04'], lw=1.5, label='filtered')
+    ax.legend(loc='upper right')
+    ax.set_ylabel('PV')
+    ax.grid(which='major', axis='y')
+    fig.tight_layout()
+    plt.show()
 
 # Resampling the filtered time-series from 5-seconds to 15-minutes
 # resolution (using the mean values)
@@ -181,39 +185,41 @@ df = pd.concat([pv, we], axis=1)
 df.dropna(inplace=True)
 df.head()
 
-# PV production and surface temp. data series plot
-fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(12, 4),
-                       gridspec_kw={'width_ratios': [3, 1]})
-df.plot(y='PV', ax=ax[0])
-df.plot(y='ST', lw=2, ax=ax[0], secondary_y=True)
-ax[0].set_ylabel('PV')
-ax[0].right_ax.set_ylabel('Temp (°C)')
-sns.regplot(x='PV', y='ST', data=df, ax=ax[1], color='seagreen',
-            line_kws={'color': 'darkgreen', 'linewidth': 2},
-            scatter_kws={'alpha': 0.25})
-ax[1].set_xlabel('PV')
-ax[1].set_ylabel('')
-fig.tight_layout()
-plt.show()
+if SHOW_PLOTS:
+    # PV production and surface temp. data series plot
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(12, 4),
+                           gridspec_kw={'width_ratios': [3, 1]})
+    df.plot(y='PV', ax=ax[0])
+    df.plot(y='ST', lw=2, ax=ax[0], secondary_y=True)
+    ax[0].set_ylabel('PV')
+    ax[0].right_ax.set_ylabel('Temp (°C)')
+    sns.regplot(x='PV', y='ST', data=df, ax=ax[1], color='seagreen',
+                line_kws={'color': 'darkgreen', 'linewidth': 2},
+                scatter_kws={'alpha': 0.25})
+    ax[1].set_xlabel('PV')
+    ax[1].set_ylabel('')
+    fig.tight_layout()
+    plt.show()
 
 # Apply a Hampel filter on top of the smoothed PV data
 filtered, outliers = hampel_filter(df['PV'], window_size=8)
 
-# Plot outliers
-fig, ax = plt.subplots(figsize=(12, 4))
-ax.plot(df['PV'].index, df['PV'].values,
-        lw=1.5, c='sienna', label='PV', zorder=1)
-ax.scatter(df['PV'].index[outliers], df['PV'].values[outliers],
-           marker='o', c='darkred', s=25, label='outliers', zorder=2)
-ax.scatter(filtered.index[outliers], filtered.values[outliers],
-           marker='s', c='navy', s=20, label='corrected', zorder=2)
-ax.set_ylabel('PV')
-s = dt.date(2019, 5, 17)
-ax.set_xlim(s, s + dt.timedelta(days=30))  # limit plot
-ax.grid(which='major', axis='y')
-ax.legend(loc='best')
-fig.tight_layout()
-plt.show()
+if SHOW_PLOTS:
+    # Plot outliers
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.plot(df['PV'].index, df['PV'].values,
+            lw=1.5, c='sienna', label='PV', zorder=1)
+    ax.scatter(df['PV'].index[outliers], df['PV'].values[outliers],
+               marker='o', c='darkred', s=25, label='outliers', zorder=2)
+    ax.scatter(filtered.index[outliers], filtered.values[outliers],
+               marker='s', c='navy', s=20, label='corrected', zorder=2)
+    ax.set_ylabel('PV')
+    s = dt.date(2019, 5, 17)
+    ax.set_xlim(s, s + dt.timedelta(days=30))  # limit plot
+    ax.grid(which='major', axis='y')
+    ax.legend(loc='best')
+    fig.tight_layout()
+    plt.show()
 
 
 def plot_correlations(dataframe, column_names, lags=24,
@@ -285,8 +291,9 @@ def plot_correlations(dataframe, column_names, lags=24,
     return
 
 
-# Show plots
-plot_correlations(df, column_names=['PV', 'ST'])
+if SHOW_PLOTS:
+    # Show correlations plot
+    plot_correlations(df, column_names=['PV', 'ST'])
 
 # Pearson correlation between PV production and surface temperature
 print('Pearson correlation between PV production and surface temperature:')
@@ -583,10 +590,13 @@ def plot_predictions(walk, STEP, y_test, y_pred):
 single_step_model = False
 
 if single_step_model:
+    print('\nRunning single-step model ...')
     # Hour-ahead weather forecast is NOT being utilized
     weather_forecast = False
+
     # Prepare dataframe for a split into train, test sets
     X, y = prepare_data(df2)
+
     # Train and test dataset split (w/o shuffle)
     X_train, X_test, y_train, y_test = \
         train_test_split(X, y, train_size=0.8, shuffle=False)
@@ -594,7 +604,7 @@ if single_step_model:
     print(X_train.shape, y_train.shape)
     print(X_test.shape, y_test.shape)
 
-    model = 'RandomForest'  # 'AdaBoost'
+    model = 'RandomForest'
 
     if model == 'RandomForest':
         # Pipeline: SelectKBest and RandomForest
@@ -659,9 +669,10 @@ if single_step_model:
     if sample_weighting:
         # Exponentially weighting samples (emphasis on the most recent ones)
         sample_weights = exponential_sample_weights(X_train.shape[0], 2.)
-        search.fit(X_train, y_train, estimator__sample_weight=sample_weights)
+        search.fit(X_train.values, y_train.values.ravel(),
+                   estimator__sample_weight=sample_weights)
     else:
-        search.fit(X_train, y_train)
+        search.fit(X_train.values, y_train.values.ravel())
     time_end = timeit.default_timer()
     time_elapsed = time_end - time_start
     print('Execution time (hour:min:sec): {}'
@@ -677,7 +688,7 @@ if single_step_model:
                        'max_samples': search.best_params_['estimator__max_samples'],
                        }
         forest = RandomForestRegressor(criterion='mse', **best_params)
-        forest.fit(X_train, y_train)
+        forest.fit(X_train.values, y_train.values.ravel())
 
         TOP = 15
         feature_importance = forest.feature_importances_
@@ -685,15 +696,16 @@ if single_step_model:
         sorted_idx = np.argsort(feature_importance)[-TOP:]
         pos = np.arange(sorted_idx.shape[0]) + .25
 
-        # Plot relative feature importance
-        fig, ax = plt.subplots(figsize=(7, 5))
-        ax.barh(pos, feature_importance[sorted_idx][-TOP:],
-                align='center', color='magenta', alpha=0.6)
-        plt.yticks(pos, X_train.columns[sorted_idx][-TOP:])
-        ax.set_xlabel('Feature Relative Importance')
-        ax.grid(axis='x')
-        plt.tight_layout()
-        plt.show()
+        if SHOW_PLOTS:
+            # Plot relative feature importance
+            fig, ax = plt.subplots(figsize=(7, 5))
+            ax.barh(pos, feature_importance[sorted_idx][-TOP:],
+                    align='center', color='magenta', alpha=0.6)
+            plt.yticks(pos, X_train.columns[sorted_idx][-TOP:])
+            ax.set_xlabel('Feature Relative Importance')
+            ax.grid(axis='x')
+            plt.tight_layout()
+            plt.show()
 
     # Make single-step predictions for 24 hours ahead
     y_preds = search.predict(X_test.values[:24, :])
@@ -702,19 +714,6 @@ if single_step_model:
     print('MSE:', mse.round(5))
     mae = mean_absolute_error(y_test.values[:24], y_preds)
     print('MAE:', mae.round(5))
-
-    plt.figure(figsize=(6, 4))
-    plt.plot(y_test.index[:24], y_test.values[0:24], lw=2, label='true values')
-    plt.plot(y_test.index[:24], y_preds, ls='--', lw=1.5,
-             marker='+', ms=10, label='predictions')
-    plt.text(y_test.index[20], 0.35, 'MAE: {:.3f}'.format(mae),
-             horizontalalignment='center', fontweight='bold')
-    plt.legend(loc='upper right')
-    plt.grid(axis='y')
-    plt.xticks(rotation=45)
-    plt.xlabel('Day/Hour')
-    plt.ylabel('PV power')
-    plt.show()
 
     # Do walk-forward predictions (ONLY if weather_forecast == False)
     for k in range(WALK):
@@ -726,6 +725,7 @@ if single_step_model:
             y_pred_values.append(y_predict)
             # Walk-forward for a single time step
             X_test_values = walk_forward(X_test_values, y_predict)
+
         # Plot walk-forward predictions against true values
         plot_predictions(k, STEP, y_test, y_pred_values)
 
