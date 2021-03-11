@@ -1,6 +1,5 @@
-# This workflow will install Python dependencies, run flake8 lint, test code with pytest and run
-  main script
-  with a single version of Python
+# This workflow will install Python dependencies, run flake8 lint, test code with pytest and run main script
+# Workflow uses a a single version of Python (Python 3.8)
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
 name: Python 3.8 build
