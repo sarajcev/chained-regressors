@@ -1,37 +1,33 @@
-## Welcome to GitHub Pages
+## Machine Learning in Power System Analysis
 
-You can use the [editor on GitHub](https://github.com/sarajcev/Seminar/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+Day-ahead forecasting of PV production using historical time-series data and weather information. Multi-step forecasting uses regressor chaining from `scikit-learn` with regressors (e.g. support vector machine) that do not support natively the multi-output regression.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+### Dataset
 
-### Markdown
+Dataset consists of two parts: (1) 5-second resolution PV production time-series and (2) 15-minute resolution time-series weather data.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+The weather data is composed of several weather variables:
 
-```markdown
-Syntax highlighted code block
+- CD = low clouds (0 to 1)
+- CM = medium clouds (0 to 1)
+- CU = high clouds (0 to 1)
+- PREC = precipitation (mm / 15 min)
+- RH2m = relative humidity (%)
+- SNOW = snow height (mm)
+- ST = Surface Temperature (°C)
+- SWD = Global Horizontal Irradiance (W/m2)
+- SWDtop = Total Solar Irradiance at the top of the atmosphere (W/m2)
+- TT2M = temperature 2 meters above the ground (°C)
+- WS100m = Wind speed at 100m from the ground (m/s)
+- WS10m = Wind speed at 10m from the ground (m/s)
 
-# Header 1
-## Header 2
-### Header 3
+### ML model
 
-- Bulleted
-- List
+Several different models are examined and compared: 
 
-1. Numbered
-2. List
+- chained support vector machine regressor
+- multi-output support vector machine regressor
+- random forest (multi-output) regressor
+- decision trees (multi-output) regressor
 
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/sarajcev/Seminar/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+Principal components analysis can be used for features reduction. Standard scaler can be employed on the input data. Hyperparameters optimization is tackled using two different approaches: (a) RandomizedSearchCV and (b) HalvingRandomSearchCV, with cross-validation on the training set. Models use TimeSeriesSplit with cross-validation.
