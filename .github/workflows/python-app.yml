@@ -1,4 +1,6 @@
-# This workflow will install Python dependencies, run flake8 lint and run main script with a single version of Python
+# This workflow will install Python dependencies, run flake8 lint, test code with pytest and run
+  main script
+  with a single version of Python
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
 name: Python 3.8 build
@@ -31,5 +33,10 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Test with pytest
+      run: |
+        pytest
     - name: Run main script
-      run: python model.py
+      run: |
+        # execute model.py script
+        python model.py

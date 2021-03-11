@@ -468,6 +468,8 @@ def exponential_sample_weights(num, shape=1.):
     being generated here constitutes an ordered time-series, starting 
     with the most-recent sample at the position zero!
     """
+    if num <= 0:
+        raise Exception('Parameter "num" must be a positive integer.')
     indices = np.linspace(0., shape, num=num)
     sample_weights = np.exp(-indices)
     return sample_weights
