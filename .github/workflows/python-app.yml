@@ -1,7 +1,7 @@
-# This workflow will install Python dependencies and run flake8 lint with a single version of Python
+# This workflow will install Python dependencies, run flake8 lint and run main script with a single version of Python
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Python 3.8 
+name: Python 3.8 build
 
 on:
   push:
