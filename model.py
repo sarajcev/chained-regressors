@@ -101,8 +101,9 @@ def hampel_filter(input_series, window_size,
     rolling_mad = scale_factor * input_series.rolling(window=2 * window_size,
                                                       center=True).apply(mad)
     indices = list(
-        np.argwhere(difference.values > (n_sigmas * rolling_mad.values))
-            .flatten()
+        np.argwhere(
+            difference.values > (n_sigmas * rolling_mad.values)
+        ).flatten()
     )
 
     # Overwriting outliers with rolling median values
@@ -124,7 +125,7 @@ def hampel_filter(input_series, window_size,
 SHOW_PLOTS = True
 
 # ### PV Data
-# 
+
 # 5-second resolution MiRIS PV from 13/05/2019 to 21/06/2019.
 pv = pd.read_csv('data/miris_pv.csv', index_col=0, parse_dates=True)
 
@@ -156,9 +157,8 @@ pv = pv_filter.resample('15min').mean()
 # ### Weather Data
 
 # 15-minute resolution weather data
-# 
+
 # The file is composed of forecast of several weather variables:
-# 
 #     CD = low clouds (0 to 1)
 #     CM = medium clouds (0 to 1)
 #     CU = high clouds (0 to 1)
@@ -224,7 +224,7 @@ if SHOW_PLOTS:
 
 def plot_correlations(dataframe, column_names, lags=24,
                       copy_data=True, resample=True):
-    """ Autocorrelation (ACF), Partial autocorrelation (PACF) and 
+    """ Autocorrelation (ACF), Partial autocorrelation (PACF) and
     Cross-correlation (CCF) plots of two different time-series.
 
     Arguments
@@ -243,7 +243,7 @@ def plot_correlations(dataframe, column_names, lags=24,
         inside the function.
     resample: bool
         True/False indicator for resampling data to hourly frequency.
-   
+
     Notes
     -----
     Function displays a matplotlib plot of the time-series data,
@@ -315,12 +315,12 @@ def engineer_features(dataframe, window=24, steps_ahead=1,
     Arguments
     ---------
     dataframe: pd.DataFrame
-        Pandas dataframe holding the original time-series data 
+        Pandas dataframe holding the original time-series data
         (in the long table format).
     window: int
         Window size for the past observations (for time-shifting).
     steps_ahead: int
-        Number of time steps ahead for multi-step forecasting 
+        Number of time steps ahead for multi-step forecasting
         (steps_ahead=1 means single-step ahead forecasting).
     copy_data: bool
         True/False indicator for making a local copy of the dataframe
@@ -409,10 +409,10 @@ def prepare_data(dataframe, weather_forecast=False, copy_data=True):
     Arguments
     ---------
     dataframe: pd.DataFrame
-        Pandas dataframe holding the original time-series data 
+        Pandas dataframe holding the original time-series data
         (in the long table format).
     weather_forecast: bool
-        True/False variable indicating if hour-ahead weather 
+        True/False variable indicating if hour-ahead weather
         forecast is available or not when making predictions.
     copy_data: bool
         True/False indicator for making a local copy of the dataframe
@@ -452,7 +452,7 @@ def exponential_sample_weights(num, shape=1.):
         Number of samples.
     shape: float
         Number indicating the steepness of the exponential function.
-        Larger number means larger steepness. Usually, a number in 
+        Larger number means larger steepness. Usually, a number in
         the range 1 to 5 would be enough to put the weight on the
         most-recent samples.
 
@@ -464,8 +464,8 @@ def exponential_sample_weights(num, shape=1.):
 
     Notes
     -----
-    It is assumed that the samples array for which the weights are  
-    being generated here constitutes an ordered time-series, starting 
+    It is assumed that the samples array for which the weights are
+    being generated here constitutes an ordered time-series, starting
     with the most-recent sample at the position zero!
     """
     if num <= 0:
@@ -481,12 +481,12 @@ WALK = 12  # walk-forward for WALK hours
 STEP = 24  # multi-step predict for STEP hours ahead
 
 # With STEP=24 and WALK=12, we are making a 24-hour ahead predictions
-# after each hour, and move forward in time for 12 hours in total. 
-# In other words, we walk forward for 12 hours, and each time we move 
-# forward (by one hour) we make a brand new 24-hour ahead predictions. 
+# after each hour, and move forward in time for 12 hours in total.
+# In other words, we walk forward for 12 hours, and each time we move
+# forward (by one hour) we make a brand new 24-hour ahead predictions.
 # Predicted values are being utilized as past observations for making
-# new predictions as we walk forward in time. Hence, as we move away in 
-# time from the present moment we are relying more and more on predicted 
+# new predictions as we walk forward in time. Hence, as we move away in
+# time from the present moment we are relying more and more on predicted
 # values to make new predictions!
 
 
@@ -499,7 +499,7 @@ def walk_forward(X_values, y_predicted, window=24,
     vars.), which have been time-shifted using the "window" method.
 
     NOTE: Function uses certain hard-coded elements, specially adjusted
-          for the particular problem/ dataset at hand. 
+          for the particular problem/ dataset at hand.
 
     Arguments
     ---------
@@ -508,16 +508,16 @@ def walk_forward(X_values, y_predicted, window=24,
     y_predicted: float
         Predicted value.
     window: int
-        Window size of the past observations. It should be equal to 
+        Window size of the past observations. It should be equal to
         the window size that was used for features engineering.
     weather_forecast: bool
-        True/False variable indicating if hour-ahead weather 
+        True/False variable indicating if hour-ahead weather
         forecast is available or not when making predictions.
 
     Returns
     -------
     X_values: np.array
-        Input values time-shifted by a single time step, using the 
+        Input values time-shifted by a single time step, using the
         walk forward approach.
 
     Raises
@@ -641,7 +641,7 @@ if single_step_model:
         # Pipeline: SelectKBest and SVR
         # SelectKBest is used for features selection/reduction
         selectbest = SelectKBest(score_func=mutual_info_regression, k='all')
-        # Support Vector Regression 
+        # Support Vector Regression
         svr = SVR(kernel='rbf', gamma='scale')
         # Creating a pipeline
         pipe = Pipeline(steps=[('preprocess', 'passthrough'),
@@ -684,7 +684,7 @@ if single_step_model:
     print(search.best_params_)
 
     if model == 'RandomForest':
-        # Feature importance analysis 
+        # Feature importance analysis
         best_params = {'n_estimators': search.best_params_['estimator__n_estimators'],
                        'max_depth': search.best_params_['estimator__max_depth'],
                        'max_samples': search.best_params_['estimator__max_samples'],
@@ -801,7 +801,7 @@ elif multi_model == 'MultiSVR':
                    'svr__estimator__gamma': ['scale', 'auto'],
                    }
 elif multi_model == 'PCA+SVR':
-    # Principal Component Analysis (PCA) is used for decomposing 
+    # Principal Component Analysis (PCA) is used for decomposing
     # (i.e. projecting) features into the lower-dimensional space
     # while retaining maximum amount of the variance.
     pca = PCA(whiten=True, svd_solver='full')
