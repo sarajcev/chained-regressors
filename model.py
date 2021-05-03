@@ -154,6 +154,40 @@ if SHOW_PLOTS:
 # resolution (using the mean values)
 pv = pv_filter.resample('15min').mean()
 
+# Bollinger bands for outlier detection
+# Every point of the original time series that falls outside the
+# Bollinger bands is considered outlier. The bands are formed at
+# two standard deviations from the mean, using the rolling window
+# statistics with a window size of 20 points.
+window = 20
+ma = pv.rolling(window=window, center=True).mean()
+sd = pv.rolling(window=window, center=True).std()
+lowr = ma - 2 * sd
+uppr = ma + 2 * sd
+
+if SHOW_PLOTS:
+    # Example plot
+    beg = '2019-06-03'
+    end = '2019-06-06'
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(pv.loc[beg:end], ls='-', lw=1.5, c='royalblue', label='original')
+    # Bollinger bands
+    ax.plot(pv['PV'].loc[beg:end].index, ma['PV'].loc[beg:end].values,
+            ls='-', lw=1, c='darkorange', label='MA({})'.format(window))
+    ax.fill_between(x=pv['PV'].loc[beg:end].index,
+                    y1=lowr['PV'].loc[beg:end].values,
+                    y2=uppr['PV'].loc[beg:end].values,
+                    color='wheat', alpha=0.25, label='BB({})'.format(window))
+    ax.plot(pv['PV'].loc[beg:end].index, lowr['PV'].loc[beg:end].values,
+            ls='-', lw=0.5, c='tan', label='')
+    ax.plot(pv['PV'].loc[beg:end].index, uppr['PV'].loc[beg:end].values,
+            ls='-', lw=0.5, c='tan', label='')
+    ax.legend(loc='upper right')
+    ax.set_ylabel('PV')
+    ax.grid(which='major', axis='y')
+    fig.tight_layout()
+    plt.show()
+
 # ### Weather Data
 
 # 15-minute resolution weather data
@@ -215,7 +249,7 @@ if SHOW_PLOTS:
                marker='s', c='navy', s=20, label='corrected', zorder=2)
     ax.set_ylabel('PV')
     s = dt.date(2019, 5, 17)
-    ax.set_xlim(s, s + dt.timedelta(days=30))  # limit plot
+    ax.set_xlim(s, s + dt.timedelta(days=20))  # limit plot
     ax.grid(which='major', axis='y')
     ax.legend(loc='best')
     fig.tight_layout()
@@ -495,7 +529,7 @@ def walk_forward(X_values, y_predicted, window=24,
     """ Walk forward
 
     Preparing input matrix X for walk-forward single-step predictions.
-    There are eleven different original variables (PV plus 10 weather 
+    There are eleven different original variables (PV plus 10 weather
     vars.), which have been time-shifted using the "window" method.
 
     NOTE: Function uses certain hard-coded elements, specially adjusted
