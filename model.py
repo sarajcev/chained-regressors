@@ -160,10 +160,15 @@ pv = pv_filter.resample('15min').mean()
 # two standard deviations from the mean, using the rolling window
 # statistics with a window size of 20 points.
 window = 20
+n_sigma = 2
 ma = pv.rolling(window=window, center=True).mean()
 sd = pv.rolling(window=window, center=True).std()
-lowr = ma - 2 * sd
-uppr = ma + 2 * sd
+lowr = ma - n_sigma * sd
+uppr = ma + n_sigma * sd
+difference = np.abs(pv - ma)
+indices = list(np.argwhere(difference.values > (n_sigma * ma.values)).flatten())
+print(' Bollinger bands: Found {:d} outliers within '
+      '{:d} st. devs.'.format(len(indices), n_sigma))
 
 if SHOW_PLOTS:
     # Example plot

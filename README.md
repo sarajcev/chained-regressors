@@ -1,7 +1,8 @@
 ## ML Seminar
 
 [![GitHub](https://img.shields.io/github/license/sarajcev/Seminar)](./LICENSE)
-![Flake8 workflow](https://github.com/sarajcev/Seminar/actions/workflows/python-app.yml/badge.svg)
+![Flake8 workflow](https://github.com/sarajcev/Seminar/actions/workflows/python-app.yml/badge.svg) 
+[<img src="https://deepnote.com/buttons/launch-in-deepnote-small.svg">](https://github.com/sarajcev/Seminar)
 
 EIT postgraduate course seminar in Machine Learning for Power System Analysis
 
