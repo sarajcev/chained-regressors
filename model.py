@@ -816,45 +816,47 @@ elif multi_model == 'DecisionTree':
 elif multi_model == 'ChainSVR':
     # Support Vector Regression (does NOT support multi-output natively)
     # Building a regressor chain from the SVM base estimators.
-    svr = RegressorChain(base_estimator=SVR(kernel='rbf', cache_size=512))
+    svr = SVR(kernel='rbf', cache_size=512)
+    chain_svr = RegressorChain(base_estimator=svr)
     # Creating a pipeline
     pipe = Pipeline(steps=[('preprocess', 'passthrough'),
-                           ('svr', svr)])
+                           ('chain', chain_svr)])
     # Parameters of pipeline for the randomized search with cross-validation
     param_dists = {'preprocess': [None, StandardScaler()],
-                   'svr__base_estimator__C': stats.loguniform(1e0, 1e3),
-                   'svr__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
-                   'svr__base_estimator__gamma': ['scale', 'auto'],
+                   'chain__base_estimator__C': stats.loguniform(1e0, 1e3),
+                   'chain__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+                   'chain__base_estimator__gamma': ['scale', 'auto'],
                    }
 elif multi_model == 'MultiSVR':
     # Support Vector Regression (does NOT support multi-output natively)
     # Creating a multi-output regressor from the SVR base estimators.
-    svr = MultiOutputRegressor(estimator=SVR(kernel='rbf'))
+    multi_svr = MultiOutputRegressor(estimator=SVR(kernel='rbf'))
     # Creating a pipeline
     pipe = Pipeline(steps=[('preprocess', 'passthrough'),
-                           ('svr', svr)])
+                           ('multi', multi_svr)])
     # Parameters of pipeline for the randomized search with cross-validation
     param_dists = {'preprocess': [None, StandardScaler()],
-                   'svr__estimator__C': stats.loguniform(1e0, 1e3),
-                   'svr__estimator__epsilon': stats.loguniform(1e-5, 1e-2),
-                   'svr__estimator__gamma': ['scale', 'auto'],
+                   'multi__estimator__C': stats.loguniform(1e0, 1e3),
+                   'multi__estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+                   'multi__estimator__gamma': ['scale', 'auto'],
                    }
-elif multi_model == 'PCA+SVR':
+elif multi_model == 'PCA+ChainSVR':
     # Principal Component Analysis (PCA) is used for decomposing
     # (i.e. projecting) features into the lower-dimensional space
     # while retaining maximum amount of the variance.
     pca = PCA(whiten=True, svd_solver='full')
     # Support Vector Regression (does NOT support multi-output natively)
     # Building a regressor chain from the SVM base estimators.
-    svr = RegressorChain(base_estimator=SVR(kernel='rbf', cache_size=512))
+    svr = SVR(kernel='rbf', cache_size=512)
+    chain_svr = RegressorChain(base_estimator=svr)
     # Creating a pipeline
     pipe = Pipeline(steps=[('pca', pca),
-                           ('svr', svr)])
+                           ('chain', chain_svr)])
     # Parameters of pipeline for the randomized search with cross-validation
     param_dists = {'pca__n_components': stats.uniform(),
-                   'svr__base_estimator__C': stats.loguniform(1e0, 1e3),
-                   'svr__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
-                   'svr__base_estimator__gamma': ['scale', 'auto'],
+                   'chain__base_estimator__C': stats.loguniform(1e0, 1e3),
+                   'chain__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+                   'chain__base_estimator__gamma': ['scale', 'auto'],
                    }
 else:
     raise NotImplementedError('Model name "{}" is not recognized '
