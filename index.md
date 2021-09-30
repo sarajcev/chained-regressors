@@ -1,12 +1,14 @@
 ## Machine Learning in Power System Analysis
 
-Day-ahead forecasting of PV production using historical time-series data and weather information. Multi-step forecasting uses regressor chaining from `scikit-learn` with regressors (e.g. support vector machine) that do not support natively the multi-output regression.
+Day-ahead forecasting of PV production using historical time-series data and weather information. 
+
+Both single-step and multi-step forecasting of PV production with and without weather data is provided. Multi-step forecasting uses regressor chaining from `scikit-learn` with regressors (e.g. support vector machine) that do not support natively the multi-output regression.
 
 ### Dataset
 
-Dataset consists of two parts: (1) 5-second resolution PV production time-series and (2) 15-minute resolution time-series weather data.
+Dataset comes from Kaggle and consists of two parts: (1) 5-second resolution PV production time-series and (2) 15-minute resolution time-series weather data.
 
-The weather data is composed of several weather variables:
+The weather data is composed from the following weather variables:
 
 - CD = low clouds (0 to 1)
 - CM = medium clouds (0 to 1)
@@ -21,13 +23,15 @@ The weather data is composed of several weather variables:
 - WS100m = Wind speed at 100m from the ground (m/s)
 - WS10m = Wind speed at 10m from the ground (m/s)
 
-### ML model
+### ML models
 
-Several different models are examined and compared: 
+Different single-step and multi-step forecasting models are proposed and compared. Specifically, several different multi-step forecasting models are examined: 
 
 - chained support vector machine regressor
 - multi-output support vector machine regressor
 - random forest (multi-output) regressor
 - decision trees (multi-output) regressor
 
-Principal components analysis can be used for features reduction. Standard scaler can be employed on the input data. Hyperparameters optimization is tackled using two different approaches: (a) RandomizedSearchCV and (b) HalvingRandomSearchCV, with cross-validation on the training set. Models use TimeSeriesSplit with cross-validation.
+Furthermore, principal components analysis (PCA) can be used for features reduction. Standard scaler can be employed on the input data. 
+
+Hyperparameters optimization is tackled using two different approaches: (a) RandomizedSearchCV and (b) HalvingRandomSearchCV, with cross-validation on the training set. Models use TimeSeriesSplit with cross-validation.
