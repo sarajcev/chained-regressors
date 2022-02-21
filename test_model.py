@@ -5,7 +5,7 @@ Test model.py
 
 def test_exponential_sample_weights():
     """ Test exponential_sample_weights function. """
-    from model import exponential_sample_weights
+    from sandbox import exponential_sample_weights
     from numpy.testing import assert_array_almost_equal
 
     weights_one = exponential_sample_weights(1)
