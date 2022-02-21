@@ -2,13 +2,13 @@
 
 Day-ahead forecasting of PV production using historical time-series data and weather information. 
 
-Both single-step and multi-step forecasting of PV production with and without weather data is provided. Multi-step forecasting uses regressor chaining from `scikit-learn` with regressors (e.g. support vector machine) that do not support natively the multi-output regression.
+Both single-step and multi-step forecasting of PV production with and without weather data is provided. Multi-step forecasting uses regressor chaining from `scikit-learn` as a support for those regressors (e.g. support vector machine) that do not support natively the multi-output regression.
 
 ### Dataset
 
-Dataset comes from Kaggle and consists of two parts: (1) 5-second resolution PV production time-series and (2) 15-minute resolution time-series weather data.
+Dataset comes from the Kaggle and consists of two parts: (1) 5-second resolution PV production time-series and (2) 15-minute resolution time-series weather data.
 
-The weather data is composed from the following weather variables:
+The weather data is composed from the following weather-related variables:
 
 - CD = low clouds (0 to 1)
 - CM = medium clouds (0 to 1)
@@ -32,6 +32,6 @@ Different single-step and multi-step forecasting models are proposed and compare
 - random forest (multi-output) regressor
 - decision trees (multi-output) regressor
 
-Furthermore, principal components analysis (PCA) can be used for features reduction. Standard scaler can be employed on the input data. 
+Furthermore, principal components analysis (PCA) can be used for features reduction as an additional step with some of the models. Standard scaler can be employed on the input data. Extensive use of the pipeline concept from the `scikit-learn` has been exploited.
 
-Hyperparameters optimization is tackled using two different approaches: (a) RandomizedSearchCV and (b) HalvingRandomSearchCV, with cross-validation on the training set. Models use TimeSeriesSplit with cross-validation.
+Hyperparameters optimization is tackled by using two different approaches: (a) RandomizedSearchCV and (b) HalvingRandomSearchCV, with cross-validation on the training set. Models use TimeSeriesSplit with cross-validation.
