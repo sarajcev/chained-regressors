@@ -1,8 +1,3 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import statsmodels.api as sm
-
-
 def hampel_filter(input_series, window_size, 
                   scale_factor=1.4826, n_sigmas=3, 
                   overwrite=True, copy_series=True):
@@ -46,6 +41,8 @@ def hampel_filter(input_series, window_size,
     flags as outliers any value that lies more than 'n_sigmas' from the 
     median value, calculated using the rolling window approach.
     """
+    import numpy as np
+
     if copy_series:
         series = input_series.copy()
     else:
@@ -102,6 +99,9 @@ def plot_correlations(dataframe, column_names, lags=24,
     of the selected time-series variables. These figures can aid in determining
     the most appropriate time shifts (lags) for the features engineering.
     """
+    import matplotlib.pyplot as plt
+    import statsmodels.api as sm
+
     if copy_data:
         df = dataframe.copy()
     else:
@@ -168,6 +168,8 @@ def engineer_features(dataframe, window=24, steps_ahead=1,
     df: pd.DataFrame
         Pandas dataframe with newly engineered features (long format).
     """
+    import numpy as np
+
     if copy_data:
         df = dataframe.copy()
     else:
@@ -284,6 +286,315 @@ def exponential_sample_weights(num, shape=1.):
     being generated here constitute an ordered time-series, starting 
     with the most-recent sample at the position zero.
     """
+    import numpy as np
+
     indices = np.linspace(0., shape, num=num)
     sample_weights = np.exp(-indices)
     return sample_weights
+
+
+def walk_forward(X_values, y_predicted, window=24, weather_forecast=False):
+    """ Walk forward
+
+    Preparing input matrix X for walk-forward single-step predictions.
+    There are eleven different original variables (PV plus 10 weather 
+    vars.), which have been time-shifted using the "window" method.
+
+    NOTE: Function uses certain hard-coded elements, specially adjusted
+          for the particular problem/ dataset at hand. 
+
+    Arguments
+    ---------
+    X_values: np.array
+        Input values for making predictions.
+    Y_predicted: float
+        Predicted value.
+    window: int
+        Window size of the past observations. It should be equal to 
+        the window size that was used for features engineering.
+
+    Returns
+    -------
+    X_values: np.array
+        Input values time-shifted by a single time step, using the 
+        walk forward approach.
+
+    Raises
+    ------
+    NotImplementedError
+        Walk forward is not implemented with hour-ahead weather forecast.
+    """
+    import numpy as np
+    import pandas as pd
+
+    #TODO: Implement a walk forward with the hour-ahead weather forecast.
+    if weather_forecast:
+        raise NotImplementedError('Walk forward is not implemented with hour-ahead weather forecast.')
+    
+    # There are eleven different original
+    # variables (PV plus 10 weather vars)
+    X_parts = []
+    j = 0; k = 0
+    for i in range(11):
+        k = j + window
+        X_part = X_values[j:k]
+        X_part = pd.Series(X_part)
+        if i == 0:
+            # time-shifted PV production
+            X_part = X_part.shift(periods=1, fill_value=y_predicted)
+        else:
+            # time-shifted weather features
+            X_part = X_part.shift(periods=1, fill_value=np.NaN)
+            X_part.fillna(method='bfill', inplace=True)  # back-fill
+        X_parts.append(X_part.values)
+        j += window
+    X_parts = np.asarray(X_parts).reshape(1,-1).flatten()
+    X_rest = X_values[-19:]   # other features (hard-coded)
+    # Update feature PV_diff with y_predicted
+    X_rest[0] = X_parts[0] - X_parts[1]
+    # Concatenate
+    X_values = np.r_[X_parts, X_rest]
+    
+    return X_values
+
+
+def single_step_model(model, X_train, y_train, n_iter=100):
+    """
+    Single-step ahead time-series forecasting.
+
+    Parameters
+    ----------
+    model: str
+        Model name, where following names are allowed: "RandomForest",
+        "AdaBoost", and "SVR".
+    X_train: array
+        Matrix of features from the training data set.
+    y_train: array
+        Vector of class labels from the training data set.
+    n_iter: int
+        Number of iterations for the random search algorithm.
+    
+    Returns
+    -------
+    search: RandomizedSearchCV
+        Trained instance of the `RandomizedSearchCV` class from `scikit-learn`.
+    
+    Raises
+    ------
+    NotImplementedError
+    """
+    import timeit
+    import datetime as dt
+    from sklearn.svm import SVR
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.ensemble import AdaBoostRegressor
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.feature_selection import SelectKBest, mutual_info_regression
+    from sklearn.model_selection import RandomizedSearchCV
+    from sklearn.model_selection import TimeSeriesSplit
+    from scipy import stats
+
+    print('Working ...')
+    if model == 'RandomForest':
+        # Pipeline: SelectKBest and RandomForest
+        # SelectKBest is used for features selection/reduction
+        selectbest = SelectKBest(score_func=mutual_info_regression, k='all')
+        forest = RandomForestRegressor(criterion='mse', bootstrap=True)
+        # Creating a pipeline
+        pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
+                               ('kbest', selectbest), 
+                               ('estimator', forest)])
+        # Parameters of pipeline for the randomized search with cross-validation
+        param_dists = {
+            'preprocess': [None, StandardScaler()], 
+            'kbest__k': stats.randint(low=32, high=128), 
+            'estimator__n_estimators': stats.randint(low=200, high=1000),
+            'estimator__max_depth': [1, 3, 5, None], 
+            'estimator__max_samples': stats.uniform(loc=0.2, scale=0.8),
+            }
+    elif model == 'AdaBoost':
+        # AdaBoost with Decision tree regressor (supports multi-output natively)
+        ada = AdaBoostRegressor(base_estimator=DecisionTreeRegressor())
+        # Creating a pipeline
+        pipe = Pipeline(steps=[('estimator', ada)])
+        # Parameters of pipeline for the randomized search with cross-validation
+        param_dists = {
+            # Hyper-parameters of the base estimator (DecisionTree)
+            'estimator__base_estimator__max_depth': [3, 4],  # three-levels deep
+            'estimator__base_estimator__min_samples_leaf': [1, 2],
+            # Hyper-parameters of the ensemble estimator (AdaBoost)
+            'estimator__n_estimators': stats.randint(low=50, high=500),
+            'estimator__learning_rate': stats.uniform(1e-2, 1e1),
+            }
+    elif model == 'SVR':
+        # Pipeline: SelectKBest and SVR
+        # SelectKBest is used for features selection/reduction
+        selectbest = SelectKBest(score_func=mutual_info_regression, k='all')
+        # Support Vector Regression 
+        svr = SVR(kernel='rbf', gamma='scale')
+        # Creating a pipeline
+        pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
+                               ('kbest', selectbest), 
+                               ('estimator', svr)])
+        # Parameters of pipeline for the randomized search with cross-validation
+        param_dists = {
+            'preprocess': [None, StandardScaler()], 
+            'kbest__k': stats.randint(low=32, high=128), 
+            'estimator__C': stats.loguniform(1e0, 1e3),
+            'estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+            }
+    else:
+        raise NotImplementedError(
+            'Model name "{}" is not recognized or implemented!'.format(model))
+
+    NITER = n_iter  # number of random search iterations
+    sample_weighting = True  # use sample weighting
+
+    time_start = timeit.default_timer()
+    search = RandomizedSearchCV(estimator=pipe, param_distributions=param_dists, 
+                                cv=TimeSeriesSplit(n_splits=3),
+                                scoring='neg_mean_squared_error',
+                                n_iter=NITER, refit=True, n_jobs=-1)
+    
+    if sample_weighting:
+        # Exponentially weighting samples (emphasis on the most recent ones)
+        sample_weights = exponential_sample_weights(X_train.shape[0], 2.)
+        search.fit(X_train, y_train.values.ravel(), estimator__sample_weight=sample_weights)
+    else:
+        search.fit(X_train, y_train.values.ravel())
+    
+    time_end = timeit.default_timer()
+    time_elapsed = time_end - time_start
+    print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
+    print('Best parameter (CV score = {:.3f}):'.format(search.best_score_))
+    print(search.best_params_)
+
+    return search
+
+
+def multi_step_model(multi_model, X_train, y_train, n_iter=100):
+    """
+    Multi-step ahead time-series forecasting with chained regressors or by
+    means of regressors natively supporting multi-output regression.
+
+    Parameters
+    ----------
+    model: str
+        Model name, where following names are allowed: "RandomForest",
+        "AdaBoost", and "SVR".
+    X_train: array
+        Matrix of features from the training data set.
+    y_train: array
+        Vector of class labels from the training data set.
+    n_iter: int
+        Number of iterations for the random search algorithm.
+    
+    Returns
+    -------
+    search: RandomizedSearchCV
+        Trained instance of the `RandomizedSearchCV` class from `scikit-learn`.
+    
+    Raises
+    ------
+    NotImplementedError
+
+    """
+    import timeit
+    import datetime as dt
+    from sklearn.svm import SVR
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.model_selection import RandomizedSearchCV
+    from sklearn.model_selection import TimeSeriesSplit
+    from sklearn.multioutput import MultiOutputRegressor, RegressorChain
+    from sklearn.decomposition import PCA
+    from scipy import stats
+
+    print('Working ...')
+    if multi_model == 'RandomForest':
+        # Random Forest Regression (supports multi-output natively)
+        forest = RandomForestRegressor(criterion='mse', bootstrap=True)
+        # Creating a pipeline
+        pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
+                               ('forest', forest)])
+        # Parameters of pipeline for the randomized search with cross-validation
+        param_dists = {
+            'preprocess': [None, StandardScaler()], 
+            'forest__n_estimators': stats.randint(low=200, high=1000),
+            'forest__max_depth': [1, 3, 5, None], 
+            'forest__max_samples': stats.uniform(loc=0.2, scale=0.8),
+            }
+    elif multi_model == 'DecisionTree':
+        # Decision tree regressor 
+        tree = DecisionTreeRegressor()
+        # Creating a pipeline
+        pipe = Pipeline(steps=[('tree', tree)])
+        param_dists = {
+            'tree__criterion': ['mse', 'mae'],
+            'tree__max_depth': [2, 4, 6, 8, None],
+            'tree__min_samples_leaf': stats.randint(low=1, high=9)
+            }
+    elif multi_model == 'ChainSVR':
+        # Support Vector Regression (does NOT support multi-output natively)
+        svr = RegressorChain(SVR(kernel='rbf', gamma='scale'))
+        # Creating a pipeline
+        pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
+                               ('svr', svr)])
+        # Parameters of pipeline for the randomized search with cross-validation
+        param_dists = {
+            'preprocess': [None, StandardScaler()], 
+            'svr__base_estimator__C': stats.loguniform(1e0, 1e3),
+            'svr__base_estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+            }                 
+    elif multi_model == 'MultiSVR':
+        # Support Vector Regression (does NOT support multi-output natively)
+        svr = MultiOutputRegressor(SVR(kernel='rbf', gamma='scale'))
+        # Creating a pipeline
+        pipe = Pipeline(steps=[('preprocess', 'passthrough'), 
+                               ('svr', svr)])
+        # Parameters of pipeline for the randomized search with cross-validation
+        param_dists = {
+            'preprocess': [None, StandardScaler()], 
+            'svr__estimator__C': stats.loguniform(1e0, 1e3),
+            'svr__estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+            }
+    elif multi_model == 'PCA+SVR':
+        # Principal Component Analysis (PCA) is used for decomposing 
+        # (i.e. projecting) features into the lower-dimensional space
+        # while retaining maximum amount of the variance.
+        pca = PCA(whiten=True, svd_solver='full')
+        # Support Vector Regression (does NOT support multi-output natively)
+        svr = MultiOutputRegressor(SVR(kernel='rbf', gamma='scale'))
+        # Creating a pipeline
+        pipe = Pipeline(steps=[('pca', pca), 
+                               ('svr', svr)])
+        # Parameters of pipeline for the randomized search with cross-validation
+        param_dists = {
+            'pca__n_components': stats.uniform(),
+            'svr__estimator__C': stats.loguniform(1e0, 1e3),
+            'svr__estimator__epsilon': stats.loguniform(1e-5, 1e-2),
+            }
+    else:
+        raise NotImplementedError(
+            'Model name "{}" is not recognized or implemented!'.format(multi_model))
+
+    NITER = n_iter  # number of random search iterations
+    time_start = timeit.default_timer()
+    search_multi = RandomizedSearchCV(estimator=pipe, 
+                                      param_distributions=param_dists, 
+                                      cv=TimeSeriesSplit(n_splits=3),
+                                      scoring='neg_mean_squared_error',
+                                      n_iter=NITER, refit=True, n_jobs=-1)
+    search_multi.fit(X_train, y_train)
+    time_end = timeit.default_timer()
+    
+    time_elapsed = time_end - time_start
+    print('Execution time (hour:min:sec): {}'.format(str(dt.timedelta(seconds=time_elapsed))))
+    print('Best parameter (CV score = {:.3f}):'.format(search_multi.best_score_))
+    print(search_multi.best_params_)
+
+    return search_multi
